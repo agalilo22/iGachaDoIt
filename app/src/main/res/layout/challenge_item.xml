@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/challengeDescriptionTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Complete 3 sessions today."
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/challengeRewardTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Reward: 5 Pulls" />
+
+</LinearLayout>
