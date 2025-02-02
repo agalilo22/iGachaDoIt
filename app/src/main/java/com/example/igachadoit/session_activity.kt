@@ -1,6 +1,8 @@
 package com.example.igachadoit
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MenuItem
@@ -41,6 +43,8 @@ class SessionActivity : AppCompatActivity() {
     private lateinit var pullAnimationImageView: ImageView
     private lateinit var pullButton: Button // Add pull button
     private var pullsToGive = 0 // Store the number of pulls to give
+    private lateinit var sharedPreferences: SharedPreferences
+    private val MECHANICS_PREF_KEY = "show_mechanics"
 
     private val prizes = listOf(
         Pair("AM Album Vinyl", R.drawable.am_album_vinyl),
@@ -60,6 +64,16 @@ class SessionActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.session_activity)
+
+        sharedPreferences = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+
+        // Show game mechanics dialog if it's the first time or if "Show Every Startup" is selected
+        val showMechanics = sharedPreferences.getBoolean(MECHANICS_PREF_KEY, true) // Default to true (show on first run)
+
+        if (showMechanics) {
+            showGameMechanicsDialog()
+        }
+
 
         val rewardRecyclerView: RecyclerView = findViewById(R.id.rewardsRecyclerView)
         rewardRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -98,6 +112,31 @@ class SessionActivity : AppCompatActivity() {
             rewardUser()
         }
     }
+    private fun showGameMechanicsDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_game_mechanics, null)
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(false) // Prevent dismissing by touching outside
+            .create()
+
+        val stopShowingCheckBox = dialogView.findViewById<android.widget.RadioButton>(R.id.stopShowingCheckBox)
+        val showEveryStartupRadioButton = dialogView.findViewById<android.widget.RadioButton>(R.id.showEveryStartupRadioButton)
+
+        dialogView.findViewById<Button>(R.id.okButton)?.setOnClickListener {
+            val editor = sharedPreferences.edit()
+
+            if (stopShowingCheckBox.isChecked) {
+                editor.putBoolean(MECHANICS_PREF_KEY, false) // Stop showing mechanics
+            } else if (showEveryStartupRadioButton.isChecked) {
+                editor.putBoolean(MECHANICS_PREF_KEY, true) // Show every startup
+            }
+            editor.apply()
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
 
     private fun handleNavigationItemSelected(menuItem: MenuItem): Boolean {
         when (menuItem.itemId) {
