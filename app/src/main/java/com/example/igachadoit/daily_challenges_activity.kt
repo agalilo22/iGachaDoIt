@@ -62,7 +62,7 @@ class DailyChallengesActivity : AppCompatActivity() {
         val allChallenges = listOf(
             Challenge("Complete 3 sessions today.", "5 Pulls"),
             Challenge("Study for 2 hours.", "3 Pulls"),
-            Challenge("Maintain your streak.", "1 Pull"),
+            Challenge("Maintain your streak.", "1 Pull", completed = true), // Example of a completed challenge
             Challenge("Complete a hard session.", "2 pulls"),
             Challenge("Complete 5 easy sessions.", "6 pulls"),
             Challenge("Study for 30 minutes.", "1 pull")
@@ -78,8 +78,8 @@ class DailyChallengesActivity : AppCompatActivity() {
             val rewardAmount = challenge.reward.split(" ")[0].toInt() // Extract the number of pulls
             addPulls(rewardAmount)
             Toast.makeText(this, "Reward claimed: ${challenge.reward}", Toast.LENGTH_SHORT).show()
-            challenge.completed = false // Reset completion
-            adapter.notifyItemChanged(position) // Update the adapter
+            challenge.completed = false // Reset completion after claiming (optional, based on requirement)
+            adapter.notifyItemChanged(position) // Update the adapter to reflect button state
         } else {
             Toast.makeText(this, "Challenge not completed yet.", Toast.LENGTH_SHORT).show()
         }
@@ -127,7 +127,14 @@ class DailyChallengesAdapter(
         val challenge = challenges[position]
         holder.challengeDescriptionTextView.text = challenge.description
         holder.challengeRewardTextView.text = "Reward: ${challenge.reward}"
-        holder.claimButton.isEnabled = challenge.completed
+
+        // Set button visibility based on challenge completion status
+        if (challenge.completed) {
+            holder.claimButton.visibility = View.VISIBLE // Show button if completed
+        } else {
+            holder.claimButton.visibility = View.GONE    // Hide button if not completed
+        }
+
         holder.claimButton.setOnClickListener {
             onItemClick(position)
         }
