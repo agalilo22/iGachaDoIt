@@ -62,7 +62,7 @@ class DailyChallengesActivity : AppCompatActivity() {
         val allChallenges = listOf(
             Challenge("Complete 3 sessions today.", "5 Pulls"),
             Challenge("Study for 2 hours.", "3 Pulls"),
-            Challenge("Maintain your streak.", "1 Pull", completed = true), // Example of a completed challenge
+            Challenge("Maintain your streak.", "1 Pull"), // Example of a completed challenge
             Challenge("Complete a hard session.", "2 pulls"),
             Challenge("Complete 5 easy sessions.", "6 pulls"),
             Challenge("Study for 30 minutes.", "1 pull")
@@ -129,6 +129,7 @@ class DailyChallengesAdapter(
         holder.challengeRewardTextView.text = "Reward: ${challenge.reward}"
 
         // Set button visibility based on challenge completion status
+        // Create logic for the completion criteria
         if (challenge.completed) {
             holder.claimButton.visibility = View.VISIBLE // Show button if completed
         } else {

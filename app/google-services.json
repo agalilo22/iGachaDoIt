@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "382130996015",
+    "project_id": "igachadoit-83927",
+    "storage_bucket": "igachadoit-83927.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:382130996015:android:938e5808a0f96acbfa17da",
+        "android_client_info": {
+          "package_name": "com.example.igachadoit"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "382130996015-g177eca0fi6mjbogg5sev5pcdtjmbh84.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.igachadoit",
+            "certificate_hash": "b64813b13daf7b0895016ff98bfdc4ee39d1bee7"
+          }
+        },
+        {
+          "client_id": "382130996015-8jfk30apneg6bq58dh7o43vc6aqp0bl1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAs_Kdm6gDeF1wvy0NOrc6jx2XEY8BOE9A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "382130996015-8jfk30apneg6bq58dh7o43vc6aqp0bl1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

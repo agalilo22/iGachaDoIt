@@ -17,6 +17,7 @@
         <item name="colorAccent">#8BC34A</item>
         <item name="fontFamily">@font/annie_use_your_telescope</item>
         <!-- Customize your theme here. -->
+        <item name="android:windowFullscreen">true</item>
     </style>
 
 </resources>
