@@ -39,7 +39,7 @@
             android:id="@+id/dailyStreakTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Daily Streak: 7 Days"
+            android:text=" "
             android:layout_marginTop="16dp"
             android:layout_gravity="center"/>
 
@@ -48,7 +48,7 @@
             android:id="@+id/weeklyStreakTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Weekly Streak: 2 Weeks"
+            android:text=" "
             android:layout_marginTop="8dp"
             android:layout_gravity="center"/>
 
@@ -57,7 +57,7 @@
             android:id="@+id/totalPullsTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Total Pulls: 150"
+            android:text=" "
             android:layout_marginTop="8dp"
             android:layout_gravity="center"/>
 

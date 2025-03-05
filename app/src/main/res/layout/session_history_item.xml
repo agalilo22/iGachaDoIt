@@ -9,13 +9,11 @@
         android:id="@+id/sessionDateTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="2024-10-27 10:00 AM"
         android:textSize="16sp" />
 
     <TextView
         android:id="@+id/sessionDurationTextView"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Duration: 1 hour 30 minutes" />
+        android:layout_height="wrap_content" />
 
 </LinearLayout>
