@@ -26,9 +26,13 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 import java.util.Timer
 import kotlin.concurrent.timer
@@ -58,6 +62,24 @@ class SessionActivity : AppCompatActivity() {
     private var sessionStartedToday = false
     private var appOpenedToday = false
 
+    // Variables to be persisted locally for guest users
+    private var dailyStreak = 0
+    private var weeklyStreak = 0
+    private var totalPulls = 0
+    private var sessionsCompletedToday = 0
+    private var studyTimeMinutes = 0
+    private var streakMaintained = false
+    private var hardSessionCompleted = false
+    private var easySessionsCompleted = 0
+    private var lastSessionDifficulty: String? = null
+    private var dailyStreakIncrementedToday = false
+    private var lastOpenedDate: String = ""
+
+    //Keys for SharedPreferences
+    private val SESSION_HISTORY_KEY = "session_history"
+    private val REWARD_GALLERY_KEY = "reward_gallery"
+
+
     private val prizes = listOf(
         Pair("AM Album Vinyl", R.drawable.am_album_vinyl),
         Pair("Fyukai Desu", R.drawable.fyukai_desu),
@@ -79,16 +101,24 @@ class SessionActivity : AppCompatActivity() {
         googleAccount = GoogleSignIn.getLastSignedInAccount(this)
 
         sharedPreferences = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+
+        // Load data from SharedPreferences on onCreate for guest users, and for pulls for all users
+        loadLocalData()
+        loadPulls() // Load pulls for all users as pulls are now local
+
         val showMechanics = sharedPreferences.getBoolean(MECHANICS_PREF_KEY, true)
         if (showMechanics) {
             showGameMechanicsDialog()
-
-            checkDailyStreak()
-            appOpenedToday = true
-
-            syncDataFromFirestore()
-
         }
+
+        checkDailyStreak()
+        appOpenedToday = true
+
+        // Sync from Firestore only for logged in users
+        if (FirebaseAuth.getInstance().currentUser != null) {
+            syncDataFromFirestore()
+        }
+
 
         val rewardRecyclerView: RecyclerView = findViewById(R.id.rewardsRecyclerView)
         rewardRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -126,21 +156,56 @@ class SessionActivity : AppCompatActivity() {
         pullButton.setOnClickListener {
             rewardUser()
         }
-
-        checkDailyStreak()
-        appOpenedToday = true;
     }
 
+    // Load pulls from SharedPreferences
+    private fun loadPulls() {
+        pullsToGive = sharedPreferences.getInt("pulls", 0)
+    }
+
+
+    private fun loadLocalData() {
+        dailyStreak = sharedPreferences.getInt("dailyStreak", 0)
+        weeklyStreak = sharedPreferences.getInt("weeklyStreak", 0)
+        totalPulls = sharedPreferences.getInt("pulls", 0)
+        sessionsCompletedToday = sharedPreferences.getInt("sessionsCompletedToday", 0)
+        studyTimeMinutes = sharedPreferences.getInt("studyTimeMinutes", 0)
+        streakMaintained = sharedPreferences.getBoolean("streakMaintained", false)
+        hardSessionCompleted = sharedPreferences.getBoolean("hardSessionCompleted", false)
+        easySessionsCompleted = sharedPreferences.getInt("easySessionsCompleted", 0)
+        lastSessionDifficulty = sharedPreferences.getString("lastSessionDifficulty", null)
+        dailyStreakIncrementedToday = sharedPreferences.getBoolean("dailyStreakIncrementedToday", false)
+        lastOpenedDate = sharedPreferences.getString("lastOpenedDate", "") as String
+    }
+
+
+    private fun saveLocalData() {
+        val editor = sharedPreferences.edit()
+        editor.putInt("dailyStreak", dailyStreak)
+        editor.putInt("weeklyStreak", weeklyStreak)
+        editor.putInt("pulls", totalPulls)
+        editor.putInt("sessionsCompletedToday", sessionsCompletedToday)
+        editor.putInt("studyTimeMinutes", studyTimeMinutes)
+        editor.putBoolean("streakMaintained", streakMaintained)
+        editor.putBoolean("hardSessionCompleted", hardSessionCompleted)
+        editor.putInt("easySessionsCompleted", easySessionsCompleted)
+        editor.putString("lastSessionDifficulty", selectedDifficulty)
+        editor.putBoolean("dailyStreakIncrementedToday", dailyStreakIncrementedToday)
+        editor.putString("lastOpenedDate", lastOpenedDate)
+        editor.apply()
+    }
+
+
     private fun checkDailyStreak() {
-        val lastOpenedDate = sharedPreferences.getString("lastOpenedDate", "")
         val currentDate = getCurrentDate()
 
         if (lastOpenedDate != currentDate) {
             sessionStartedToday = false
-            sharedPreferences.edit().putBoolean("dailyStreakIncrementedToday", false).apply()
+            dailyStreakIncrementedToday = false // Reset the flag for the new day
         }
 
-        sharedPreferences.edit().putString("lastOpenedDate", currentDate).apply()
+        lastOpenedDate = currentDate // Update last opened date
+        saveLocalData() // Save the updated lastOpenedDate to SharedPreferences
     }
 
 
@@ -153,108 +218,132 @@ class SessionActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         if (sessionStartedToday && appOpenedToday) {
-            val dailyStreakIncrementedToday = sharedPreferences.getBoolean("dailyStreakIncrementedToday", false)
             if(!dailyStreakIncrementedToday){
-                val dailyStreak = sharedPreferences.getInt("dailyStreak", 0) + 1
-                sharedPreferences.edit().apply {
-                    putInt("dailyStreak", dailyStreak)
-                    putBoolean("dailyStreakIncrementedToday", true)
-                    apply()
-                }
-                updateFirestoreStreaksAndPulls(dailyStreak, sharedPreferences.getInt("weeklyStreak", 0), sharedPreferences.getInt("pulls", 0))
+                dailyStreak++
+                dailyStreakIncrementedToday = true
+                saveLocalData() // Save updated dailyStreak and dailyStreakIncrementedToday locally
+                updateFirestoreStreaksAndPulls(dailyStreak, weeklyStreak, totalPulls)
             }
         }
-        saveDataToFirestore()
+        // Save to Firestore only for logged in users
+        if (FirebaseAuth.getInstance().currentUser != null) {
+            saveDataToFirestore()
+        } else {
+            saveLocalData() // Save local data for guest users onStop as well for immediate persistence
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         timer?.cancel()
         timer = null
-        saveDataToFirestore()
+        // Save to Firestore only for logged in users
+        if (FirebaseAuth.getInstance().currentUser != null) {
+            saveDataToFirestore()
+        } else {
+            saveLocalData() // Save local data for guest users onDestroy as well
+        }
     }
 
     override fun onPause() {
         super.onPause()
-        saveDataToFirestore()
+        // Save to Firestore only for logged in users
+        if (FirebaseAuth.getInstance().currentUser != null) {
+            saveDataToFirestore()
+        } else {
+            saveLocalData() // Save local data for guest users onPause as well
+        }
     }
 
+
     private fun saveDataToFirestore() {
-        val dailyStreak = sharedPreferences.getInt("dailyStreak", 0)
-        val weeklyStreak = sharedPreferences.getInt("weeklyStreak", 0)
-        val totalPulls = sharedPreferences.getInt("pulls", 0)
+        if (FirebaseAuth.getInstance().currentUser != null) { // Only save to Firestore if logged in
+            googleAccount?.let { account ->
+                val userId = account.id ?: return
+                val userData = hashMapOf(
+                    "dailyStreak" to dailyStreak,
+                    "weeklyStreak" to weeklyStreak,
+                    "totalPulls" to totalPulls,
+                    "lastUpdated" to Timestamp.now()
+                )
 
-        googleAccount?.let { account ->
-            val userId = account.id ?: return
-            val userData = hashMapOf(
-                "dailyStreak" to dailyStreak,
-                "weeklyStreak" to weeklyStreak,
-                "totalPulls" to totalPulls,
-                "lastUpdated" to Timestamp.now()
-            )
-
-            firestore.collection("user_data").document(userId).set(userData)
-                .addOnSuccessListener {
-
-                    Toast.makeText(this, "Progress saved to Firestore", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(this, "Failed to save progress: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-        } ?: run {
-            // User not signed in, save locally if needed
+                firestore.collection("user_data").document(userId).set(userData)
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "Progress saved to Firestore", Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(
+                            this,
+                            "Failed to save progress: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+            } ?: run {
+                // User not signed in, save locally if needed -  This part is not strictly needed as local save happens in onStop/onDestroy/onPause
+            }
         }
     }
 
     private fun syncDataFromFirestore() {
-        googleAccount?.let { account ->
-            val userId = account.id ?: return
+        if (FirebaseAuth.getInstance().currentUser != null) { // Only sync from Firestore if logged in
+            googleAccount?.let { account ->
+                val userId = account.id ?: return
 
-            firestore.collection("user_data").document(userId).get()
-                .addOnSuccessListener { document ->
-                    if (document.exists()) {
-                        val dailyStreak = document.getLong("dailyStreak")?.toInt() ?: 0
-                        val weeklyStreak = document.getLong("weeklyStreak")?.toInt() ?: 0
-                        val totalPulls = document.getLong("totalPulls")?.toInt() ?: 0
+                firestore.collection("user_data").document(userId).get()
+                    .addOnSuccessListener { document ->
+                        if (document.exists()) {
+                            dailyStreak = document.getLong("dailyStreak")?.toInt() ?: 0
+                            weeklyStreak = document.getLong("weeklyStreak")?.toInt() ?: 0
+                            totalPulls = document.getLong("totalPulls")?.toInt() ?: 0
 
-                        sharedPreferences.edit().apply {
-                            putInt("dailyStreak", dailyStreak)
-                            putInt("weeklyStreak", weeklyStreak)
-                            putInt("pulls", totalPulls)
-                            apply()
+                            saveLocalData() // Update local SharedPreferences with Firestore data
+                        } else {
+                            // Document doesn't exist, use local data or initialize - no action needed as local data will be used.
                         }
-                    } else {
-                        // Document doesn't exist, use local data or initialize
                     }
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(this, "Failed to sync data: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-        } ?: run {
-            // User not signed in, use local data
+                    .addOnFailureListener { e ->
+                        Toast.makeText(
+                            this,
+                            "Failed to sync data: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+            } ?: run {
+                // User not signed in, use local data - no action needed as local data is already in use.
+            }
         }
     }
 
     private fun updateFirestoreStreaksAndPulls(dailyStreak: Int, weeklyStreak: Int, totalPulls: Int) {
-        googleAccount?.let { account ->
-            val userId = account.id ?: return
-            val userData = hashMapOf(
-                "dailyStreak" to dailyStreak,
-                "weeklyStreak" to weeklyStreak,
-                "totalPulls" to totalPulls,
-                "lastUpdated" to Timestamp.now()
-            )
+        if (FirebaseAuth.getInstance().currentUser != null) { // Only update Firestore if logged in
+            googleAccount?.let { account ->
+                val userId = account.id ?: return
+                val userData = hashMapOf(
+                    "dailyStreak" to dailyStreak,
+                    "weeklyStreak" to weeklyStreak,
+                    "totalPulls" to totalPulls,
+                    "lastUpdated" to Timestamp.now()
+                )
 
-            firestore.collection("users").document(userId).set(userData)
-                .addOnSuccessListener {
-                    // Optionally, you can log or display a message
-                    //Toast.makeText(this, "Progress saved to Firestore", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(this, "Failed to save progress: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-        } ?: run {
-            Toast.makeText(this, "User not signed in. Progress not saved.", Toast.LENGTH_SHORT).show()
+                firestore.collection("users").document(userId).set(userData)
+                    .addOnSuccessListener {
+                        // Optionally, you can log or display a message
+                        //Toast.makeText(this, "Progress saved to Firestore", Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(
+                            this,
+                            "Failed to save progress: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+            } ?: run {
+                Toast.makeText(
+                    this,
+                    "User not signed in. Progress not saved to cloud.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 
@@ -289,19 +378,23 @@ class SessionActivity : AppCompatActivity() {
                 recordReward(randomPrize.first)
 
                 pullsToGive--
+                totalPulls++ // Increment total pulls locally
+                saveLocalData() // Save updated totalPulls locally
+
                 if (pullsToGive == 0) {
                     pullButton.isEnabled = false
                     showPostRewardsDialog(randomPrize) // Pass the last prize
                     Toast.makeText(this, "You've used all your pulls!", Toast.LENGTH_SHORT).show()
                 }
 
-                // Update pulls in SharedPreferences
-                sharedPreferences.edit().apply {
-                    val currentPulls = sharedPreferences.getInt("pulls", 0) + 1
-                    putInt("pulls", currentPulls)
-                    apply()
-                    updateFirestoreStreaksAndPulls(sharedPreferences.getInt("dailyStreak", 0), sharedPreferences.getInt("weeklyStreak", 0), currentPulls)
-                }
+                // Update pulls in SharedPreferences - redundant, already updated via saveLocalData()
+                // sharedPreferences.edit().apply {
+                //    val currentPulls = sharedPreferences.getInt("pulls", 0) + 1
+                //    putInt("pulls", currentPulls)
+                //    apply()
+                //    updateFirestoreStreaksAndPulls(sharedPreferences.getInt("dailyStreak", 0), sharedPreferences.getInt("weeklyStreak", 0), currentPulls)
+                //}
+                updateFirestoreStreaksAndPulls(dailyStreak, weeklyStreak, totalPulls) // Update Firestore with new pulls count
 
             }, 1200)
         } else {
@@ -437,7 +530,7 @@ class SessionActivity : AppCompatActivity() {
 
     private fun startSession() {
         secondsElapsed = 0
-        sessionStartTime = Timestamp.now()
+        sessionStartTime = Timestamp.now() // Firestore Timestamp, ok for guest local storage as well for now. Could serialize differently if needed.
         val sessionDurationSeconds = when (selectedDifficulty) {
             "Easy" -> 5
             "Moderate" -> 5
@@ -463,7 +556,7 @@ class SessionActivity : AppCompatActivity() {
                 }
             }
         }
-        sessionStartedToday = true;
+        sessionStartedToday = true
     }
 
 
@@ -482,7 +575,7 @@ class SessionActivity : AppCompatActivity() {
                 prizeImageView.visibility = View.GONE
                 pullsToGive = 0
                 Toast.makeText(this, "Session Canceled", Toast.LENGTH_SHORT).show()
-                recordSessionHistory(false) // Record canceled session
+                recordSessionHistory(false)
             }
             .setNegativeButton("No", null)
             .show()
@@ -498,7 +591,7 @@ class SessionActivity : AppCompatActivity() {
                 pullButton.visibility = View.VISIBLE
                 pullButton.isEnabled = true
                 cancelSessionButton.visibility = View.GONE
-                recordSessionHistory(true) // Record completed session
+                recordSessionHistory(true)
 
                 // Update SharedPreferences for challenges
                 updateChallengeData()
@@ -508,55 +601,74 @@ class SessionActivity : AppCompatActivity() {
     }
 
     private fun updateChallengeData() {
-        val sharedPreferences = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
+        sessionsCompletedToday++ // Increment local session counter
+        saveLocalData() // Save the incremented sessionsCompletedToday
 
-        // Increment sessions completed today
-        val sessionsCompleted = sharedPreferences.getInt("sessionsCompletedToday", 0) + 1
-        editor.putInt("sessionsCompletedToday", sessionsCompleted)
+        val editor = sharedPreferences.edit() // Get editor, though saveLocalData() already handles saving many values. Kept for potential future additions here.
 
-        // Store the last session difficulty
-        editor.putString("lastSessionDifficulty", selectedDifficulty)
+        // Store the last session difficulty - already handled in saveLocalData indirectly through selectedDifficulty variable.
 
         // Check if it was a hard session.
         if (selectedDifficulty == "Hard") {
-            editor.putBoolean("hardSessionCompleted", true)
+            hardSessionCompleted = true // Update local flag
+            saveLocalData() // Save hardSessionCompleted
         }
 
         // Check if it was an easy session.
         if (selectedDifficulty == "Easy") {
-            val easySessionsCompleted = sharedPreferences.getInt("easySessionsCompleted", 0) + 1
-            editor.putInt("easySessionsCompleted", easySessionsCompleted)
+            easySessionsCompleted++ // Increment local counter
+            saveLocalData() // Save easySessionsCompleted
         }
 
+        // Applying editor is not strictly needed here as saveLocalData() updates all relevant values, including the ones updated above.
+        // editor.apply()
+    }
+
+
+    private fun recordReward(prizeName: String) {
+        if (FirebaseAuth.getInstance().currentUser != null) { // Logged-in user: Save to Firestore
+            googleAccount?.let { account ->
+                val userId = account.id ?: return
+                val rewardData = hashMapOf(
+                    "prizeName" to prizeName,
+                    "timestamp" to com.google.firebase.Timestamp.now()
+                )
+
+                firestore.collection("users").document(userId)
+                    .collection("rewards").add(rewardData)
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "Reward recorded!", Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(
+                            this,
+                            "Failed to record reward: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+            } ?: run {
+                Toast.makeText(
+                    this,
+                    "User not signed in. Reward not recorded to cloud.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        } else { // Guest user: Save to SharedPreferences
+            saveRewardOffline(prizeName)
+            Toast.makeText(this, "Reward recorded locally (Guest User).", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun saveRewardOffline(prizeName: String) {
+        val currentRewardsJson = sharedPreferences.getString(REWARD_GALLERY_KEY, "[]")
+        val type = object : TypeToken<MutableList<String>>() {}.type
+        val rewardList: MutableList<String> = Gson().fromJson(currentRewardsJson, type) ?: mutableListOf()
+        rewardList.add(prizeName)
+        val editor = sharedPreferences.edit()
+        editor.putString(REWARD_GALLERY_KEY, Gson().toJson(rewardList))
         editor.apply()
     }
 
-    private fun recordReward(prizeName: String) {
-        googleAccount?.let { account ->
-            val userId = account.id ?: return
-            val rewardData = hashMapOf(
-                "prizeName" to prizeName,
-                "timestamp" to com.google.firebase.Timestamp.now()
-            )
-
-            firestore.collection("users").document(userId)
-                .collection("rewards").add(rewardData)
-                .addOnSuccessListener {
-                    Toast.makeText(this, "Reward recorded!", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(
-                        this,
-                        "Failed to record reward: ${e.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-        } ?: run {
-            Toast.makeText(this, "User not signed in. Reward not recorded.", Toast.LENGTH_SHORT)
-                .show()
-        }
-    }
 
     private fun passRewardedItemToGallery(rewardedItem: Pair<String, Int>) {
         val intent = Intent(this, RewardGalleryActivity::class.java)
@@ -619,34 +731,50 @@ class SessionActivity : AppCompatActivity() {
     }
 
     private fun recordSessionHistory(sessionCompleted: Boolean) {
-        googleAccount?.let { account ->
-            val userId = account.id ?: return
-            val sessionData = hashMapOf(
-                "startTime" to sessionStartTime,
-                "endTime" to Timestamp.now(),
-                "durationSeconds" to secondsElapsed,
-                "difficulty" to selectedDifficulty,
-                "completed" to sessionCompleted
-            )
+        val sessionRecord = Session(sessionStartTime, secondsElapsed.toLong(), sessionCompleted)
+        if (FirebaseAuth.getInstance().currentUser != null) { // Logged-in user: Save to Firestore
+            googleAccount?.let { account ->
+                val userId = account.id ?: return
+                val sessionData = hashMapOf(
+                    "startTime" to sessionStartTime,
+                    "endTime" to Timestamp.now(),
+                    "durationSeconds" to secondsElapsed,
+                    "difficulty" to selectedDifficulty,
+                    "completed" to sessionCompleted
+                )
 
-            firestore.collection("users").document(userId)
-                .collection("sessionHistory").add(sessionData)
-                .addOnSuccessListener {
-                    Toast.makeText(this, "Session history recorded!", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(
-                        this,
-                        "Failed to record session history: ${e.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-        } ?: run {
-            Toast.makeText(
-                this,
-                "User not signed in. Session history not recorded.",
-                Toast.LENGTH_SHORT
-            ).show()
+                firestore.collection("users").document(userId)
+                    .collection("sessionHistory").add(sessionData)
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "Session history recorded!", Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(
+                            this,
+                            "Failed to record session history: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+            } ?: run {
+                Toast.makeText(
+                    this,
+                    "User not signed in. Session history not recorded to cloud.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        } else { // Guest user: Save to SharedPreferences
+            saveSessionHistoryOffline(sessionRecord)
+            Toast.makeText(this, "Session history recorded locally (Guest User).", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun saveSessionHistoryOffline(session: Session) {
+        val currentHistoryJson = sharedPreferences.getString(SESSION_HISTORY_KEY, "[]")
+        val type = object : TypeToken<MutableList<Session>>() {}.type
+        val sessionHistoryList: MutableList<Session> = Gson().fromJson(currentHistoryJson, type) ?: mutableListOf()
+        sessionHistoryList.add(session)
+        val editor = sharedPreferences.edit()
+        editor.putString(SESSION_HISTORY_KEY, Gson().toJson(sessionHistoryList))
+        editor.apply()
     }
 }

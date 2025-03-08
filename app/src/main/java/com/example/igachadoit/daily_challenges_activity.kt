@@ -24,6 +24,7 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.material.navigation.NavigationView
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -31,7 +32,12 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-data class Challenge(val description: String, val reward: String, var completed: Boolean = false, var claimed: Boolean = false)
+data class Challenge(
+    val description: String,
+    val reward: String,
+    var completed: Boolean = false,
+    var claimed: Boolean = false
+)
 
 class DailyChallengesActivity : AppCompatActivity() {
 
@@ -57,7 +63,11 @@ class DailyChallengesActivity : AppCompatActivity() {
         "AM Album Vinyl" to R.drawable.am_album_vinyl,
         "Fyukai Desu" to R.drawable.fyukai_desu,
         "Blade Runner 2047 Movie Poster" to R.drawable.blade_runner_poster,
-        "U-U-U-I-A" to R.drawable.u_u_u_i_a)
+        "U-U-U-I-A" to R.drawable.u_u_u_i_a
+    )
+
+    //Keys for SharedPreferences
+    private val REWARD_GALLERY_KEY = "reward_gallery"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,6 +102,9 @@ class DailyChallengesActivity : AppCompatActivity() {
         challengesRecyclerView.adapter = adapter
 
         checkChallengeCompletion()
+
+        // Load pulls on activity creation (for both guest and logged-in users as pulls are managed locally now)
+        loadPulls()
     }
 
     private fun getOrGenerateDailyChallenges(): MutableList<Challenge> {
@@ -143,8 +156,10 @@ class DailyChallengesActivity : AppCompatActivity() {
                 "Complete 3 sessions today." -> challenge.completed = sessionsCompleted >= 3
                 "Study for 2 hours." -> challenge.completed = studyTimeMinutes >= 120
                 "Maintain your streak." -> challenge.completed = streakMaintained
-                "Complete a hard session." -> challenge.completed = hardSessionCompleted && sessionDifficulty == "Hard"
-                "Complete 5 easy sessions." -> challenge.completed = easySessionsCompleted >= 5 && sessionDifficulty == "Easy"
+                "Complete a hard session." -> challenge.completed =
+                    hardSessionCompleted && sessionDifficulty == "Hard"
+                "Complete 5 easy sessions." -> challenge.completed =
+                    easySessionsCompleted >= 5 && sessionDifficulty == "Easy"
                 "Study for 30 minutes." -> challenge.completed = studyTimeMinutes >= 30
             }
         }
@@ -155,28 +170,35 @@ class DailyChallengesActivity : AppCompatActivity() {
         val challenge = challenges[position]
         if (challenge.completed && !challenge.claimed) {
             val rewardAmount = challenge.reward.split(" ")[0].toInt()
-            addPulls(rewardAmount)
+            addPulls(rewardAmount) // Pulls are now managed locally for everyone
             Toast.makeText(this, "Reward claimed: ${challenge.reward}", Toast.LENGTH_SHORT).show()
             challenge.claimed = true
-            updateStoredChallenges() // Update stored challenges after claiming
+            updateStoredChallenges()
             adapter.notifyItemChanged(position)
             showPullDialog(rewardAmount)
-        } else if(challenge.claimed){
+        } else if (challenge.claimed) {
             Toast.makeText(this, "Reward already claimed.", Toast.LENGTH_SHORT).show()
-        }else{
+        } else {
             Toast.makeText(this, "Challenge not completed yet.", Toast.LENGTH_SHORT).show()
         }
     }
+
+    // Load pulls from SharedPreferences
+    private fun loadPulls() {
+        pullsToGive = sharedPreferences.getInt("pulls", 0)
+    }
+
 
     private fun addPulls(amount: Int) {
         val currentPulls = sharedPreferences.getInt("pulls", 0)
         val editor = sharedPreferences.edit()
         editor.putInt("pulls", currentPulls + amount)
         editor.apply()
+        pullsToGive += amount // Update local pulls count immediately
     }
 
     private fun showPullDialog(rewardAmount: Int) {
-        pullsToGive = rewardAmount
+        pullsToGive = rewardAmount // Set pulls to give for the dialog
 
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_pull_reward, null)
         val pullAnimationImageView: ImageView = dialogView.findViewById(R.id.pullAnimationImageView)
@@ -195,20 +217,38 @@ class DailyChallengesActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun handleNavigationItemSelected(menuItem: MenuItem): Boolean
-    {
+    private fun handleNavigationItemSelected(menuItem: MenuItem): Boolean {
         when (menuItem.itemId) {
             R.id.nav_home -> startActivity(Intent(this, SessionActivity::class.java))
             R.id.nav_progress -> startActivity(Intent(this, ProgressActivity::class.java))
-            R.id.nav_session_history -> startActivity(Intent(this, SessionHistoryActivity::class.java))
-            R.id.nav_daily_challenges -> startActivity(Intent(this, DailyChallengesActivity::class.java))
-            R.id.nav_reward_gallery -> startActivity(Intent(this, RewardGalleryActivity::class.java))
+            R.id.nav_session_history -> startActivity(
+                Intent(
+                    this,
+                    SessionHistoryActivity::class.java
+                )
+            )
+            R.id.nav_daily_challenges -> startActivity(
+                Intent(
+                    this,
+                    DailyChallengesActivity::class.java
+                )
+            )
+            R.id.nav_reward_gallery -> startActivity(
+                Intent(
+                    this,
+                    RewardGalleryActivity::class.java
+                )
+            )
         }
         drawerLayout.closeDrawer(navigationView)
         return true
     }
 
-    private fun rewardUser(pullAnimationImageView: ImageView, prizeImageView: ImageView, dialog: AlertDialog) {
+    private fun rewardUser(
+        pullAnimationImageView: ImageView,
+        prizeImageView: ImageView,
+        dialog: AlertDialog
+    ) {
         if (pullsToGive > 0) {
             val randomPrize = prizes.random()
             prizeImageView.visibility = View.GONE
@@ -226,22 +266,33 @@ class DailyChallengesActivity : AppCompatActivity() {
                 val prizeDrawable = prizeDrawables[randomPrize.first]
                 if (prizeDrawable != null) {
                     prizeImageView.setImageResource(prizeDrawable)
-                    Toast.makeText(this, "You got: ${randomPrize.first}!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "You got: ${randomPrize.first}!", Toast.LENGTH_SHORT)
+                        .show()
                 } else {
-                    Toast.makeText(this, "Error:Drawable not found for ${randomPrize.first}!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this,
+                        "Error:Drawable not found for ${randomPrize.first}!",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
 
                 recordReward(randomPrize.first)
 
                 pullsToGive--
+                // Update SharedPreferences after using a pull
+                val currentPulls = sharedPreferences.getInt("pulls", 0)
+                sharedPreferences.edit().putInt("pulls", currentPulls - 1).apply()
+
+
                 if (pullsToGive == 0) {
                     Toast.makeText(this, "You've used all your pulls!", Toast.LENGTH_SHORT).show()
                     dialog.dismiss()
-                    showPostRewardsDialog(randomPrize) // Pass the last prize
+                    showPostRewardsDialog(randomPrize)
                 }
             }, 1200)
         } else {
-            Toast.makeText(this, "No pulls left. Complete a session to earn more!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No pulls left. Complete a session to earn more!", Toast.LENGTH_SHORT)
+                .show()
             dialog.dismiss()
         }
     }
@@ -265,25 +316,50 @@ class DailyChallengesActivity : AppCompatActivity() {
     }
 
     private fun recordReward(prizeName: String) {
-        googleAccount?.let { account ->
-            val userId = account.id ?: return
-            val rewardData = hashMapOf(
-                "prizeName" to prizeName,
-                "timestamp" to com.google.firebase.Timestamp.now()
-            )
+        if (FirebaseAuth.getInstance().currentUser != null) { // Logged-in user: Save to Firestore
+            googleAccount?.let { account ->
+                val userId = account.id ?: return
+                val rewardData = hashMapOf(
+                    "prizeName" to prizeName,
+                    "timestamp" to com.google.firebase.Timestamp.now()
+                )
 
-            firestore.collection("users").document(userId)
-                .collection("rewards").add(rewardData)
-                .addOnSuccessListener {
-                    Toast.makeText(this, "Reward recorded!", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(this, "Failed to record reward: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-        } ?: run {
-            Toast.makeText(this, "User not signed in. Reward not recorded.", Toast.LENGTH_SHORT).show()
+                firestore.collection("users").document(userId)
+                    .collection("rewards").add(rewardData)
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "Reward recorded!", Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(
+                            this,
+                            "Failed to record reward: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+            } ?: run {
+                Toast.makeText(
+                    this,
+                    "User not signed in. Reward not recorded to cloud.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        } else { // Guest user: Save to SharedPreferences
+            saveRewardOffline(prizeName)
+            Toast.makeText(this, "Reward recorded locally (Guest User).", Toast.LENGTH_SHORT).show()
         }
     }
+
+    private fun saveRewardOffline(prizeName: String) {
+        val currentRewardsJson = sharedPreferences.getString(REWARD_GALLERY_KEY, "[]")
+        val type = object : TypeToken<MutableList<String>>() {}.type
+        val rewardList: MutableList<String> =
+            Gson().fromJson(currentRewardsJson, type) ?: mutableListOf()
+        rewardList.add(prizeName)
+        val editor = sharedPreferences.edit()
+        editor.putString(REWARD_GALLERY_KEY, Gson().toJson(rewardList))
+        editor.apply()
+    }
+
 
     private fun passRewardedItemToGallery(rewardedItem: Pair<String, Int>) {
         val intent = Intent(this, RewardGalleryActivity::class.java)
@@ -299,13 +375,16 @@ class DailyChallengesActivity : AppCompatActivity() {
     }
 }
 
+
+// DailyChallengesAdapter remains the same
 class DailyChallengesAdapter(
     private val challenges: List<Challenge>,
     private val onItemClick: (Int) -> Unit
 ) : RecyclerView.Adapter<DailyChallengesAdapter.ViewHolder>() {
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val challengeDescriptionTextView: TextView = itemView.findViewById(R.id.challengeDescriptionTextView)
+        val challengeDescriptionTextView: TextView =
+            itemView.findViewById(R.id.challengeDescriptionTextView)
         val challengeRewardTextView: TextView = itemView.findViewById(R.id.challengeRewardTextView)
         val claimButton: Button = itemView.findViewById(R.id.claimButton)
     }
@@ -323,13 +402,16 @@ class DailyChallengesAdapter(
 
         if (challenge.completed && !challenge.claimed) {
             holder.claimButton.visibility = View.VISIBLE
-            holder.challengeDescriptionTextView.paintFlags = holder.challengeDescriptionTextView.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
+            holder.challengeDescriptionTextView.paintFlags =
+                holder.challengeDescriptionTextView.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
         } else {
             holder.claimButton.visibility = View.GONE
-            if(challenge.claimed){
-                holder.challengeDescriptionTextView.paintFlags = holder.challengeDescriptionTextView.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
+            if (challenge.claimed) {
+                holder.challengeDescriptionTextView.paintFlags =
+                    holder.challengeDescriptionTextView.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
             } else {
-                holder.challengeDescriptionTextView.paintFlags = holder.challengeDescriptionTextView.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
+                holder.challengeDescriptionTextView.paintFlags =
+                    holder.challengeDescriptionTextView.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
             }
         }
 

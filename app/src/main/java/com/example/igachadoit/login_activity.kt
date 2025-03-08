@@ -19,39 +19,33 @@ import com.google.firebase.auth.GoogleAuthProvider
 
 class LoginActivity : AppCompatActivity() {
 
-    private lateinit var googleSignInClient: GoogleSignInClient // Declare GoogleSignInClient
-    private lateinit var firebaseAuth: FirebaseAuth // Declare Firebase Auth instance
+    private lateinit var googleSignInClient: GoogleSignInClient
+    private lateinit var firebaseAuth: FirebaseAuth
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.login_activity)
 
-        // Configure Google Sign-In options for Firebase Authentication
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.web_client_id)) // Required for Firebase Auth with Google
-            .requestEmail() // Request user's email
+            .requestIdToken(getString(R.string.web_client_id))
+            .requestEmail()
             .build()
 
-        googleSignInClient = GoogleSignIn.getClient(this, gso) // Initialize GoogleSignInClient
-
-        // Initialize Firebase Authentication
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
         firebaseAuth = FirebaseAuth.getInstance()
 
         val googleSignInButton: Button = findViewById(R.id.googleSignInButton)
         val guestLoginButton: Button = findViewById(R.id.guestLoginButton)
 
-        // Check if user is already signed in with Firebase Authentication
         val currentUser = firebaseAuth.currentUser
         if (currentUser != null) {
-            navigateToSessionActivity() // If user is signed in, go to SessionActivity
+            navigateToSessionActivity()
         }
 
-        // Google Sign-In Button action
         googleSignInButton.setOnClickListener {
             signInWithGoogle()
         }
 
-        // Guest Login Button action
         guestLoginButton.setOnClickListener {
             showGuestWarningDialog()
         }
@@ -59,14 +53,14 @@ class LoginActivity : AppCompatActivity() {
 
     private fun signInWithGoogle() {
         val signInIntent = googleSignInClient.signInIntent
-        startActivityForResult(signInIntent, 101) // Request code 101 for Google Sign-In
+        startActivityForResult(signInIntent, 101)
     }
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode == 101) { // Check if the result is from Google Sign-In
+        if (requestCode == 101) {
             val task: Task<GoogleSignInAccount> = GoogleSignIn.getSignedInAccountFromIntent(data)
             handleSignInResult(task)
         }
@@ -75,10 +69,8 @@ class LoginActivity : AppCompatActivity() {
     private fun handleSignInResult(completedTask: Task<GoogleSignInAccount>) {
         try {
             val account: GoogleSignInAccount = completedTask.getResult(ApiException::class.java)
-            // Google Sign-In was successful, authenticate with Firebase using the Google ID Token
             firebaseAuthWithGoogle(account.idToken!!)
         } catch (e: ApiException) {
-            // Google Sign-In failed
             Log.w("GoogleSignIn", "Google sign-in failed", e)
             Toast.makeText(this, "Google Sign-in failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
@@ -89,14 +81,12 @@ class LoginActivity : AppCompatActivity() {
         firebaseAuth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    // Firebase Authentication successful
                     val user: FirebaseUser? = firebaseAuth.currentUser
-                    updateUI(user) // Update UI for successful sign-in
+                    updateUI(user)
                 } else {
-                    // Firebase Authentication failed
                     Log.w("FirebaseGoogleAuth", "Firebase sign-in failed", task.exception)
                     Toast.makeText(this, "Firebase sign-in failed.", Toast.LENGTH_SHORT).show()
-                    updateUI(null) // Update UI for failed sign-in
+                    updateUI(null)
                 }
             }
     }
@@ -113,13 +103,13 @@ class LoginActivity : AppCompatActivity() {
     private fun navigateToSessionActivity() {
         val intent = Intent(this, SessionActivity::class.java)
         startActivity(intent)
-        finish() // Optional: Finish LoginActivity so user can't go back easily
+        finish()
     }
 
     private fun showGuestWarningDialog() {
         AlertDialog.Builder(this)
             .setTitle("Continue as Guest")
-            .setMessage("Your progress will not be saved to the cloud. Do you want to proceed?")
+            .setMessage("Your progress will be saved locally on this device. If you uninstall the app or clear data, your progress will be lost. Do you want to proceed?") // Updated message
             .setPositiveButton("Continue") { _, _ ->
                 showDifficultyInfoDialog()
             }
