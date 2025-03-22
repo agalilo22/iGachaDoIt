@@ -10,6 +10,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="All Rewards Pulled!"
+        android:textSize="35sp"
+        android:textStyle="bold"
         android:textAppearance="?attr/textAppearanceHeadline6"
         android:gravity="center"
         android:paddingBottom="8dp" />
@@ -17,6 +19,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:textSize="20sp"
         android:text="Would you like to start a new session, take a break, or view your gallery?"
         android:gravity="center"
         android:paddingBottom="16dp"/>

@@ -25,6 +25,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import com.google.firebase.auth.FirebaseAuth
 
 
@@ -165,8 +166,8 @@ class RewardGalleryActivity : AppCompatActivity() {
         RecyclerView.Adapter<RewardGalleryAdapter.ViewHolder>() {
 
         class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val rewardImageView: ImageView = view.findViewById(R.id.rewardImage) // Corrected ID to rewardImage
-            val rewardNameTextView: TextView = view.findViewById(R.id.rewardName) // Corrected ID to rewardName
+            val rewardImageView: ImageView = view.findViewById(R.id.rewardImage)
+            val rewardNameTextView: TextView = view.findViewById(R.id.rewardName)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -179,11 +180,28 @@ class RewardGalleryActivity : AppCompatActivity() {
             val item = rewardItems[position]
             holder.rewardImageView.setImageResource(item.imageResId)
             holder.rewardNameTextView.text = item.name
+
+            // Set OnClickListener for image expansion
+            holder.rewardImageView.setOnClickListener {
+                showImageDialog(holder.itemView.context, item.imageResId)
+            }
         }
 
         override fun getItemCount(): Int = rewardItems.size
-    }
 
+        private fun showImageDialog(context: Context, imageResId: Int) {
+            val builder = AlertDialog.Builder(context)
+            val inflater = LayoutInflater.from(context)
+            val dialogView = inflater.inflate(R.layout.dialog_reward_image, null)
+            val expandedImageView: ImageView = dialogView.findViewById(R.id.expandedRewardImage)
+
+            expandedImageView.setImageResource(imageResId)
+
+            builder.setView(dialogView)
+            val dialog = builder.create()
+            dialog.show()
+        }
+    }
 
     private fun handleNavigationItemSelected(menuItem: MenuItem): Boolean {
         when (menuItem.itemId) {
@@ -207,6 +225,16 @@ class RewardGalleryActivity : AppCompatActivity() {
                     RewardGalleryActivity::class.java
                 )
             )
+            R.id.nav_logout -> {
+                // Sign out from Firebase Auth
+                FirebaseAuth.getInstance().signOut()
+
+                // Redirect the user to the login activity
+                val intent = Intent(this, LoginActivity::class.java) // Replace LoginActivity with your actual login activity class
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK // Clear back stack
+                startActivity(intent)
+                finish() // Optional: Finish the current activity
+            }
         }
         drawerLayout.closeDrawer(navigationView)
         return true

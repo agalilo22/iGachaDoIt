@@ -9,7 +9,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Select Difficulty"
-        android:textSize="18sp"
+        android:textSize="25sp"
         android:textStyle="bold"
         android:gravity="center"
         android:layout_marginBottom="8dp"/>
@@ -23,24 +23,28 @@
             android:id="@+id/easyRadioButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textSize="20sp"
             android:text="Easy (30 min) - 1 Pull" />
 
         <RadioButton
             android:id="@+id/moderateRadioButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textSize="20sp"
             android:text="Moderate (1 hr) - 2 pulls" />
 
         <RadioButton
             android:id="@+id/hardRadioButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textSize="20sp"
             android:text="Hard (2 hrs) - 4 pulls" />
 
         <RadioButton
             android:id="@+id/superbRadioButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textSize="20sp"
             android:text="Superb (2+ hrs)  8 pulls + 2 pulls per succeeding hour" />
     </RadioGroup>
 
@@ -54,6 +58,8 @@
             android:id="@+id/cancelButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textStyle="bold"
             android:text="Cancel"
             style="?android:attr/buttonBarButtonStyle"/>
 
@@ -62,6 +68,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Set Difficulty"
+            android:textStyle="bold"
+            android:textSize="15sp"
             style="?android:attr/buttonBarButtonStyle"/>
     </LinearLayout>
 

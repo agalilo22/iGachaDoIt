@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
@@ -40,11 +41,13 @@ import kotlin.concurrent.timer
 class SessionActivity : AppCompatActivity() {
 
     private lateinit var timerTextView: TextView
+    private lateinit var timerProgressBar: ProgressBar // Circular progress indicator
     private lateinit var startSessionButton: Button
     private lateinit var cancelSessionButton: Button
     private lateinit var prizeImageView: ImageView
     private var timer: Timer? = null
     private var secondsElapsed = 0
+    private var sessionDurationSeconds = 0 // Total session duration for progress calculation
     private var selectedDifficulty: String? = null
     private var remainingPulls = 0
     private lateinit var drawerLayout: DrawerLayout
@@ -75,10 +78,9 @@ class SessionActivity : AppCompatActivity() {
     private var dailyStreakIncrementedToday = false
     private var lastOpenedDate: String = ""
 
-    //Keys for SharedPreferences
+    // Keys for SharedPreferences
     private val SESSION_HISTORY_KEY = "session_history"
     private val REWARD_GALLERY_KEY = "reward_gallery"
-
 
     private val prizes = listOf(
         Pair("AM Album Vinyl", R.drawable.am_album_vinyl),
@@ -91,7 +93,8 @@ class SessionActivity : AppCompatActivity() {
         "AM Album Vinyl" to R.drawable.am_album_vinyl,
         "Fyukai Desu" to R.drawable.fyukai_desu,
         "Blade Runner 2047 Movie Poster" to R.drawable.blade_runner_poster,
-        "U-U-U-I-A" to R.drawable.u_u_u_i_a)
+        "U-U-U-I-A" to R.drawable.u_u_u_i_a
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -102,9 +105,8 @@ class SessionActivity : AppCompatActivity() {
 
         sharedPreferences = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
 
-        // Load data from SharedPreferences on onCreate for guest users, and for pulls for all users
         loadLocalData()
-        loadPulls() // Load pulls for all users as pulls are now local
+        loadPulls()
 
         val showMechanics = sharedPreferences.getBoolean(MECHANICS_PREF_KEY, true)
         if (showMechanics) {
@@ -114,11 +116,9 @@ class SessionActivity : AppCompatActivity() {
         checkDailyStreak()
         appOpenedToday = true
 
-        // Sync from Firestore only for logged in users
         if (FirebaseAuth.getInstance().currentUser != null) {
             syncDataFromFirestore()
         }
-
 
         val rewardRecyclerView: RecyclerView = findViewById(R.id.rewardsRecyclerView)
         rewardRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -128,6 +128,7 @@ class SessionActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
 
         timerTextView = findViewById(R.id.timerTextView)
+        timerProgressBar = findViewById(R.id.timerProgressBar) // Initialize ProgressBar
         startSessionButton = findViewById(R.id.startSessionButton)
         cancelSessionButton = findViewById(R.id.cancelSessionButton)
         pullAnimationImageView = findViewById(R.id.pullAnimationImageView)
@@ -163,7 +164,6 @@ class SessionActivity : AppCompatActivity() {
         pullsToGive = sharedPreferences.getInt("pulls", 0)
     }
 
-
     private fun loadLocalData() {
         dailyStreak = sharedPreferences.getInt("dailyStreak", 0)
         weeklyStreak = sharedPreferences.getInt("weeklyStreak", 0)
@@ -177,7 +177,6 @@ class SessionActivity : AppCompatActivity() {
         dailyStreakIncrementedToday = sharedPreferences.getBoolean("dailyStreakIncrementedToday", false)
         lastOpenedDate = sharedPreferences.getString("lastOpenedDate", "") as String
     }
-
 
     private fun saveLocalData() {
         val editor = sharedPreferences.edit()
@@ -195,19 +194,17 @@ class SessionActivity : AppCompatActivity() {
         editor.apply()
     }
 
-
     private fun checkDailyStreak() {
         val currentDate = getCurrentDate()
 
         if (lastOpenedDate != currentDate) {
             sessionStartedToday = false
-            dailyStreakIncrementedToday = false // Reset the flag for the new day
+            dailyStreakIncrementedToday = false
         }
 
-        lastOpenedDate = currentDate // Update last opened date
-        saveLocalData() // Save the updated lastOpenedDate to SharedPreferences
+        lastOpenedDate = currentDate
+        saveLocalData()
     }
-
 
     private fun getCurrentDate(): String {
         val calendar = Calendar.getInstance()
@@ -218,18 +215,17 @@ class SessionActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         if (sessionStartedToday && appOpenedToday) {
-            if(!dailyStreakIncrementedToday){
+            if (!dailyStreakIncrementedToday) {
                 dailyStreak++
                 dailyStreakIncrementedToday = true
-                saveLocalData() // Save updated dailyStreak and dailyStreakIncrementedToday locally
+                saveLocalData()
                 updateFirestoreStreaksAndPulls(dailyStreak, weeklyStreak, totalPulls)
             }
         }
-        // Save to Firestore only for logged in users
         if (FirebaseAuth.getInstance().currentUser != null) {
             saveDataToFirestore()
         } else {
-            saveLocalData() // Save local data for guest users onStop as well for immediate persistence
+            saveLocalData()
         }
     }
 
@@ -237,27 +233,24 @@ class SessionActivity : AppCompatActivity() {
         super.onDestroy()
         timer?.cancel()
         timer = null
-        // Save to Firestore only for logged in users
         if (FirebaseAuth.getInstance().currentUser != null) {
             saveDataToFirestore()
         } else {
-            saveLocalData() // Save local data for guest users onDestroy as well
+            saveLocalData()
         }
     }
 
     override fun onPause() {
         super.onPause()
-        // Save to Firestore only for logged in users
         if (FirebaseAuth.getInstance().currentUser != null) {
             saveDataToFirestore()
         } else {
-            saveLocalData() // Save local data for guest users onPause as well
+            saveLocalData()
         }
     }
 
-
     private fun saveDataToFirestore() {
-        if (FirebaseAuth.getInstance().currentUser != null) { // Only save to Firestore if logged in
+        if (FirebaseAuth.getInstance().currentUser != null) {
             googleAccount?.let { account ->
                 val userId = account.id ?: return
                 val userData = hashMapOf(
@@ -278,14 +271,12 @@ class SessionActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }
-            } ?: run {
-                // User not signed in, save locally if needed -  This part is not strictly needed as local save happens in onStop/onDestroy/onPause
             }
         }
     }
 
     private fun syncDataFromFirestore() {
-        if (FirebaseAuth.getInstance().currentUser != null) { // Only sync from Firestore if logged in
+        if (FirebaseAuth.getInstance().currentUser != null) {
             googleAccount?.let { account ->
                 val userId = account.id ?: return
 
@@ -295,10 +286,7 @@ class SessionActivity : AppCompatActivity() {
                             dailyStreak = document.getLong("dailyStreak")?.toInt() ?: 0
                             weeklyStreak = document.getLong("weeklyStreak")?.toInt() ?: 0
                             totalPulls = document.getLong("totalPulls")?.toInt() ?: 0
-
-                            saveLocalData() // Update local SharedPreferences with Firestore data
-                        } else {
-                            // Document doesn't exist, use local data or initialize - no action needed as local data will be used.
+                            saveLocalData()
                         }
                     }
                     .addOnFailureListener { e ->
@@ -308,14 +296,12 @@ class SessionActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }
-            } ?: run {
-                // User not signed in, use local data - no action needed as local data is already in use.
             }
         }
     }
 
     private fun updateFirestoreStreaksAndPulls(dailyStreak: Int, weeklyStreak: Int, totalPulls: Int) {
-        if (FirebaseAuth.getInstance().currentUser != null) { // Only update Firestore if logged in
+        if (FirebaseAuth.getInstance().currentUser != null) {
             googleAccount?.let { account ->
                 val userId = account.id ?: return
                 val userData = hashMapOf(
@@ -326,10 +312,6 @@ class SessionActivity : AppCompatActivity() {
                 )
 
                 firestore.collection("users").document(userId).set(userData)
-                    .addOnSuccessListener {
-                        // Optionally, you can log or display a message
-                        //Toast.makeText(this, "Progress saved to Firestore", Toast.LENGTH_SHORT).show()
-                    }
                     .addOnFailureListener { e ->
                         Toast.makeText(
                             this,
@@ -337,12 +319,6 @@ class SessionActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }
-            } ?: run {
-                Toast.makeText(
-                    this,
-                    "User not signed in. Progress not saved to cloud.",
-                    Toast.LENGTH_SHORT
-                ).show()
             }
         }
     }
@@ -350,52 +326,50 @@ class SessionActivity : AppCompatActivity() {
     private fun rewardUser() {
         if (pullsToGive > 0) {
             val randomPrize = prizes.random()
-            prizeImageView.visibility = View.GONE
-            pullAnimationImageView.visibility = View.VISIBLE
-            Glide.with(this@SessionActivity)
+
+            val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_pull_animation, null)
+            val pullAnimationImageView = dialogView.findViewById<ImageView>(R.id.pullAnimationImageView)
+            val prizeTextView = dialogView.findViewById<TextView>(R.id.prizeTextView)
+            val okButton = dialogView.findViewById<Button>(R.id.okButton)
+
+            val dialog = AlertDialog.Builder(this)
+                .setView(dialogView)
+                .setCancelable(false)
+                .create()
+            dialog.show()
+
+            Glide.with(this)
                 .asGif()
                 .load(R.raw.pull_animation)
                 .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
                 .into(pullAnimationImageView)
 
             pullAnimationImageView.postDelayed({
-                pullAnimationImageView.visibility = View.GONE
-                prizeImageView.visibility = View.VISIBLE
+                pullAnimationImageView.animate().alpha(0f).setDuration(200).withEndAction {
+                    pullAnimationImageView.setImageResource(prizeDrawables[randomPrize.first] ?: R.drawable.ic_launcher_background)
+                    pullAnimationImageView.animate().alpha(1f).setDuration(200).start()
+                }.start()
 
-                val prizeDrawable = prizeDrawables[randomPrize.first]
-                if (prizeDrawable != null) {
-                    prizeImageView.setImageResource(prizeDrawable)
-                    Toast.makeText(this, "You got: ${randomPrize.first}!", Toast.LENGTH_SHORT)
-                        .show()
-                } else {
-                    Toast.makeText(
-                        this,
-                        "Error: Drawable not found for ${randomPrize.first}!",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+                prizeTextView.text = "You acquired: ${randomPrize.first}!"
+                prizeTextView.visibility = View.VISIBLE
+                prizeTextView.animate().alpha(1f).setDuration(400).start()
+
+                okButton.visibility = View.VISIBLE
 
                 recordReward(randomPrize.first)
-
                 pullsToGive--
-                totalPulls++ // Increment total pulls locally
-                saveLocalData() // Save updated totalPulls locally
+                totalPulls++
+                saveLocalData()
+                updateFirestoreStreaksAndPulls(dailyStreak, weeklyStreak, totalPulls)
 
-                if (pullsToGive == 0) {
-                    pullButton.isEnabled = false
-                    showPostRewardsDialog(randomPrize) // Pass the last prize
-                    Toast.makeText(this, "You've used all your pulls!", Toast.LENGTH_SHORT).show()
+                okButton.setOnClickListener {
+                    dialog.dismiss()
+                    if (pullsToGive == 0) {
+                        pullButton.isEnabled = false
+                        showPostRewardsDialog(randomPrize)
+                        Toast.makeText(this, "You've used all your pulls!", Toast.LENGTH_SHORT).show()
+                    }
                 }
-
-                // Update pulls in SharedPreferences - redundant, already updated via saveLocalData()
-                // sharedPreferences.edit().apply {
-                //    val currentPulls = sharedPreferences.getInt("pulls", 0) + 1
-                //    putInt("pulls", currentPulls)
-                //    apply()
-                //    updateFirestoreStreaksAndPulls(sharedPreferences.getInt("dailyStreak", 0), sharedPreferences.getInt("weeklyStreak", 0), currentPulls)
-                //}
-                updateFirestoreStreaksAndPulls(dailyStreak, weeklyStreak, totalPulls) // Update Firestore with new pulls count
-
             }, 1200)
         } else {
             Toast.makeText(
@@ -406,7 +380,7 @@ class SessionActivity : AppCompatActivity() {
         }
     }
 
-    private fun showPostRewardsDialog(lastPrize: Pair<String, Int>) { // Accept the last prize
+    private fun showPostRewardsDialog(lastPrize: Pair<String, Int>) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_post_rewards, null)
         val viewGalleryButton = dialogView.findViewById<Button>(R.id.viewGalleryButton)
 
@@ -428,10 +402,9 @@ class SessionActivity : AppCompatActivity() {
             .show()
 
         viewGalleryButton.setOnClickListener {
-            passRewardedItemToGallery(lastPrize) // Move the gallery navigation here
+            passRewardedItemToGallery(lastPrize)
         }
     }
-
 
     private fun showGameMechanicsDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_game_mechanics, null)
@@ -461,26 +434,19 @@ class SessionActivity : AppCompatActivity() {
     private fun handleNavigationItemSelected(menuItem: MenuItem): Boolean {
         when (menuItem.itemId) {
             R.id.nav_progress -> startActivity(Intent(this, ProgressActivity::class.java))
-            R.id.nav_session_history -> startActivity(
-                Intent(
-                    this,
-                    SessionHistoryActivity::class.java
-                )
-            )
+            R.id.nav_session_history -> startActivity(Intent(this, SessionHistoryActivity::class.java))
+            R.id.nav_daily_challenges -> startActivity(Intent(this, DailyChallengesActivity::class.java))
+            R.id.nav_reward_gallery -> startActivity(Intent(this, RewardGalleryActivity::class.java))
+            R.id.nav_logout -> {
+                // Sign out from Firebase Auth
+                FirebaseAuth.getInstance().signOut()
 
-            R.id.nav_daily_challenges -> startActivity(
-                Intent(
-                    this,
-                    DailyChallengesActivity::class.java
-                )
-            )
-
-            R.id.nav_reward_gallery -> startActivity(
-                Intent(
-                    this,
-                    RewardGalleryActivity::class.java
-                )
-            )
+                // Redirect the user to the login activity
+                val intent = Intent(this, LoginActivity::class.java) // Replace LoginActivity with your actual login activity class
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK // Clear back stack
+                startActivity(intent)
+                finish() // Optional: Finish the current activity
+            }
         }
         drawerLayout.closeDrawer(navigationView)
         return true
@@ -530,8 +496,8 @@ class SessionActivity : AppCompatActivity() {
 
     private fun startSession() {
         secondsElapsed = 0
-        sessionStartTime = Timestamp.now() // Firestore Timestamp, ok for guest local storage as well for now. Could serialize differently if needed.
-        val sessionDurationSeconds = when (selectedDifficulty) {
+        sessionStartTime = Timestamp.now()
+        sessionDurationSeconds = when (selectedDifficulty) {
             "Easy" -> 5
             "Moderate" -> 5
             "Hard" -> 5
@@ -545,10 +511,14 @@ class SessionActivity : AppCompatActivity() {
 
         pullsToGive = getRewardPulls(selectedDifficulty!!)
 
+        timerProgressBar.max = sessionDurationSeconds // Set max to total seconds
+        timerProgressBar.progress = sessionDurationSeconds // Start full
+
         timer = timer(period = 1000) {
             runOnUiThread {
                 secondsElapsed++
                 updateTimerText()
+                updateTimerProgress()
 
                 if (secondsElapsed >= sessionDurationSeconds) {
                     timer?.cancel()
@@ -559,7 +529,6 @@ class SessionActivity : AppCompatActivity() {
         sessionStartedToday = true
     }
 
-
     private fun cancelSession() {
         AlertDialog.Builder(this)
             .setTitle("Cancel Session")
@@ -569,6 +538,7 @@ class SessionActivity : AppCompatActivity() {
                 timer = null
                 secondsElapsed = 0
                 updateTimerText()
+                timerProgressBar.progress = sessionDurationSeconds // Reset progress to full
                 cancelSessionButton.visibility = View.GONE
                 startSessionButton.visibility = View.VISIBLE
                 pullButton.visibility = View.GONE
@@ -579,7 +549,6 @@ class SessionActivity : AppCompatActivity() {
             }
             .setNegativeButton("No", null)
             .show()
-
     }
 
     private fun finishSession() {
@@ -592,8 +561,6 @@ class SessionActivity : AppCompatActivity() {
                 pullButton.isEnabled = true
                 cancelSessionButton.visibility = View.GONE
                 recordSessionHistory(true)
-
-                // Update SharedPreferences for challenges
                 updateChallengeData()
             }
             .create()
@@ -601,37 +568,27 @@ class SessionActivity : AppCompatActivity() {
     }
 
     private fun updateChallengeData() {
-        sessionsCompletedToday++ // Increment local session counter
-        saveLocalData() // Save the incremented sessionsCompletedToday
+        sessionsCompletedToday++
+        saveLocalData()
 
-        val editor = sharedPreferences.edit() // Get editor, though saveLocalData() already handles saving many values. Kept for potential future additions here.
-
-        // Store the last session difficulty - already handled in saveLocalData indirectly through selectedDifficulty variable.
-
-        // Check if it was a hard session.
         if (selectedDifficulty == "Hard") {
-            hardSessionCompleted = true // Update local flag
-            saveLocalData() // Save hardSessionCompleted
+            hardSessionCompleted = true
+            saveLocalData()
         }
 
-        // Check if it was an easy session.
         if (selectedDifficulty == "Easy") {
-            easySessionsCompleted++ // Increment local counter
-            saveLocalData() // Save easySessionsCompleted
+            easySessionsCompleted++
+            saveLocalData()
         }
-
-        // Applying editor is not strictly needed here as saveLocalData() updates all relevant values, including the ones updated above.
-        // editor.apply()
     }
 
-
     private fun recordReward(prizeName: String) {
-        if (FirebaseAuth.getInstance().currentUser != null) { // Logged-in user: Save to Firestore
+        if (FirebaseAuth.getInstance().currentUser != null) {
             googleAccount?.let { account ->
                 val userId = account.id ?: return
                 val rewardData = hashMapOf(
                     "prizeName" to prizeName,
-                    "timestamp" to com.google.firebase.Timestamp.now()
+                    "timestamp" to Timestamp.now()
                 )
 
                 firestore.collection("users").document(userId)
@@ -646,14 +603,8 @@ class SessionActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }
-            } ?: run {
-                Toast.makeText(
-                    this,
-                    "User not signed in. Reward not recorded to cloud.",
-                    Toast.LENGTH_SHORT
-                ).show()
             }
-        } else { // Guest user: Save to SharedPreferences
+        } else {
             saveRewardOffline(prizeName)
             Toast.makeText(this, "Reward recorded locally (Guest User).", Toast.LENGTH_SHORT).show()
         }
@@ -669,14 +620,12 @@ class SessionActivity : AppCompatActivity() {
         editor.apply()
     }
 
-
     private fun passRewardedItemToGallery(rewardedItem: Pair<String, Int>) {
         val intent = Intent(this, RewardGalleryActivity::class.java)
         intent.putExtra("rewardName", rewardedItem.first)
         intent.putExtra("rewardImageResId", rewardedItem.second)
         startActivity(intent)
     }
-
 
     class RewardAdapter(private val rewards: List<Pair<String, Int>>) :
         RecyclerView.Adapter<RewardAdapter.RewardViewHolder>() {
@@ -687,8 +636,7 @@ class SessionActivity : AppCompatActivity() {
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RewardViewHolder {
-            val view =
-                LayoutInflater.from(parent.context).inflate(R.layout.reward_item, parent, false)
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.reward_item, parent, false)
             return RewardViewHolder(view)
         }
 
@@ -705,6 +653,11 @@ class SessionActivity : AppCompatActivity() {
         val minutes = secondsElapsed / 60
         val seconds = secondsElapsed % 60
         timerTextView.text = String.format("%02d:%02d", minutes, seconds)
+    }
+
+    private fun updateTimerProgress() {
+        val remainingSeconds = sessionDurationSeconds - secondsElapsed
+        timerProgressBar.progress = remainingSeconds // Decrease progress as time elapses
     }
 
     private fun showBreakDialog() {
@@ -731,8 +684,12 @@ class SessionActivity : AppCompatActivity() {
     }
 
     private fun recordSessionHistory(sessionCompleted: Boolean) {
-        val sessionRecord = Session(sessionStartTime, secondsElapsed.toLong(), sessionCompleted)
-        if (FirebaseAuth.getInstance().currentUser != null) { // Logged-in user: Save to Firestore
+        val sessionRecord = SessionHistoryActivity.Session(
+            sessionStartTime,
+            secondsElapsed.toLong(),
+            sessionCompleted
+        )
+        if (FirebaseAuth.getInstance().currentUser != null) {
             googleAccount?.let { account ->
                 val userId = account.id ?: return
                 val sessionData = hashMapOf(
@@ -755,23 +712,17 @@ class SessionActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }
-            } ?: run {
-                Toast.makeText(
-                    this,
-                    "User not signed in. Session history not recorded to cloud.",
-                    Toast.LENGTH_SHORT
-                ).show()
             }
-        } else { // Guest user: Save to SharedPreferences
+        } else {
             saveSessionHistoryOffline(sessionRecord)
             Toast.makeText(this, "Session history recorded locally (Guest User).", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun saveSessionHistoryOffline(session: Session) {
+    private fun saveSessionHistoryOffline(session: SessionHistoryActivity.Session) {
         val currentHistoryJson = sharedPreferences.getString(SESSION_HISTORY_KEY, "[]")
-        val type = object : TypeToken<MutableList<Session>>() {}.type
-        val sessionHistoryList: MutableList<Session> = Gson().fromJson(currentHistoryJson, type) ?: mutableListOf()
+        val type = object : TypeToken<MutableList<SessionHistoryActivity.Session>>() {}.type
+        val sessionHistoryList: MutableList<SessionHistoryActivity.Session> = Gson().fromJson(currentHistoryJson, type) ?: mutableListOf()
         sessionHistoryList.add(session)
         val editor = sharedPreferences.edit()
         editor.putString(SESSION_HISTORY_KEY, Gson().toJson(sessionHistoryList))

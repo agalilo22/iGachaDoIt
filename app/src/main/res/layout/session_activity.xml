@@ -21,33 +21,38 @@
             app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <TextView
-            android:id="@+id/timerTextView"
+        <!-- Circular Progress Indicator with Timer Text -->
+        <FrameLayout
+            android:id="@+id/timerContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="0:00"
-            android:textSize="72sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/toolbar" />
+            app:layout_constraintTop_toBottomOf="@id/toolbar">
+
+        </FrameLayout>
 
         <Button
             android:id="@+id/startSessionButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Start Session"
+            android:text="Start"
+            android:textSize="25dp"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.498"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/timerTextView" />
+            app:layout_constraintTop_toBottomOf="@+id/timerProgressBar"
+            app:layout_constraintVertical_bias="0.242" />
 
         <Button
             android:id="@+id/cancelSessionButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Cancel Session"
+            android:text="Cancel"
+            android:textSize="25dp"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -59,6 +64,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="Pull Rewards"
+            android:textSize="25dp"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -86,13 +92,6 @@
             android:layout_marginTop="16dp"
             android:scaleType="fitCenter" />
 
-
-
-
-
-
-
-
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rewardsRecyclerView"
             android:layout_width="0dp"
@@ -104,6 +103,35 @@
             app:layout_constraintTop_toBottomOf="@id/prizeImageView"
             tools:listitem="@layout/reward_item" />
 
+        <TextView
+            android:id="@+id/timerTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="0:00"
+            android:textColor="#A7000000"
+            android:textSize="90sp"
+            app:layout_constraintBottom_toBottomOf="@+id/timerProgressBar"
+            app:layout_constraintEnd_toEndOf="@+id/timerProgressBar"
+            app:layout_constraintStart_toStartOf="@+id/timerProgressBar"
+            app:layout_constraintTop_toTopOf="@+id/timerProgressBar" />
+
+        <ProgressBar
+            android:id="@+id/timerProgressBar"
+            style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+            android:layout_width="271dp"
+            android:layout_height="279dp"
+            android:layout_gravity="center"
+            android:indeterminate="false"
+            android:max="100"
+            android:progress="100"
+            android:progressDrawable="@drawable/circular_progress_drawable"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/toolbar"
+            app:layout_constraintVertical_bias="0.29" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <com.google.android.material.navigation.NavigationView
@@ -111,6 +139,7 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        app:menu="@menu/drawer_menu" />
+        app:menu="@menu/drawer_menu"
+        app:itemTextAppearance="@style/NavigationItemTextAppearance" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

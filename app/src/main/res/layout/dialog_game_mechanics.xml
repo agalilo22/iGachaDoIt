@@ -9,7 +9,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Game Mechanics"
-        android:textSize="20sp"
+        android:textSize="25sp"
         android:textStyle="bold"
         android:layout_gravity="center_horizontal"
         android:layout_marginBottom="16dp"/>
@@ -17,23 +17,28 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="23sp"
         android:text="Accomplish diffuculties and earn respective pulls:" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="20sp"
         android:text=" - Easy (30 mins): 1 pull/session." />
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="20sp"
         android:text= " - Moderate (1 hr): 2 pulls/session."/>
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="20sp"
         android:text=" - Hard (2 hrs): 4 pulls/session." />
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textSize="20sp"
         android:text=  " - Superb (2+ hrs): 8 pulls + 2 pull per succeeding hour." />
 
     <RadioGroup

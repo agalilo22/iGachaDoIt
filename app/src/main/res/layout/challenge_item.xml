@@ -1,29 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="8dp">
+    android:layout_margin="8dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="4dp">
 
-    <TextView
-        android:id="@+id/challengeDescriptionTextView"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Complete 3 sessions today."
-        android:textSize="16sp" />
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical">
 
-    <TextView
-        android:id="@+id/challengeRewardTextView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Reward: 5 Pulls" />
+        <!-- Challenge Image -->
+        <ImageView
+            android:id="@+id/challengeImage"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="16dp"
+            android:contentDescription="Challenge Icon"
+            android:scaleType="centerCrop" />
 
-    <Button
-        android:id="@+id/claimButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Claim Reward"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="8dp"/>
+        <!-- Challenge Details -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-</LinearLayout>
+            <TextView
+                android:id="@+id/challengeDescriptionTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Challenge Description"
+                android:textSize="25sp"
+                android:textColor="@android:color/black" />
+
+            <TextView
+                android:id="@+id/challengeRewardTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Reward: X Pulls"
+                android:textSize="17sp"
+                android:textColor="@android:color/darker_gray" />
+        </LinearLayout>
+
+        <!-- Claim Button -->
+        <Button
+            android:id="@+id/claimButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Claim"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

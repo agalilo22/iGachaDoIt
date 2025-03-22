@@ -4,4 +4,8 @@
     <string name="close">Close Navigation Drawer</string>
     <string name="reward_icon_desc">Description of the reward icon</string>
     <string name="web_client_id">382130996015-8jfk30apneg6bq58dh7o43vc6aqp0bl1.apps.googleusercontent.com</string>
+    <string name="reward_image">Reward Image</string>
+    <string name="expanded_reward_image">Expanded Reward Image</string>
+    <string name="menu_account">Account</string>
+    <string name="menu_logout">Logout</string>
 </resources>

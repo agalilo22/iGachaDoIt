@@ -7,7 +7,6 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
@@ -15,46 +14,38 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import android.content.Context
-import android.content.SharedPreferences
-import com.google.firebase.auth.FirebaseAuth
-
-
-data class Session(val startTime: Timestamp?, val durationSeconds: Long, val completed: Boolean)
+import java.util.*
 
 class SessionHistoryActivity : AppCompatActivity() {
 
-    private lateinit var toolbar: Toolbar
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navigationView: NavigationView
+    private lateinit var toolbar: Toolbar
     private lateinit var toggle: ActionBarDrawerToggle
     private lateinit var sessionHistoryRecyclerView: RecyclerView
     private lateinit var firestore: FirebaseFirestore
-    private var googleAccount: GoogleSignInAccount? = null
-    private lateinit var sharedPreferences: SharedPreferences
-    private var isGuestUser = false // Flag to track guest user
 
+    private val SESSION_HISTORY_KEY = "session_history"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.session_history_activity)
 
-        // Initialize Toolbar
+        firestore = FirebaseFirestore.getInstance()
+
         toolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
 
-        // Initialize DrawerLayout and NavigationView
         drawerLayout = findViewById(R.id.drawerLayout)
         navigationView = findViewById(R.id.navigationView)
+        sessionHistoryRecyclerView = findViewById(R.id.sessionHistoryRecyclerView)
 
         toggle = ActionBarDrawerToggle(this, drawerLayout, toolbar, R.string.open, R.string.close)
         drawerLayout.addDrawerListener(toggle)
@@ -64,99 +55,83 @@ class SessionHistoryActivity : AppCompatActivity() {
             handleNavigationItemSelected(menuItem)
         }
 
-        sessionHistoryRecyclerView = findViewById(R.id.sessionHistoryRecyclerView)
+        // Setup RecyclerView
         sessionHistoryRecyclerView.layoutManager = LinearLayoutManager(this)
-
-        firestore = FirebaseFirestore.getInstance()
-        googleAccount = GoogleSignIn.getLastSignedInAccount(this)
-        sharedPreferences = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
-        isGuestUser = sharedPreferences.getBoolean(Constants.PREF_IS_GUEST_USER, false) // Retrieve guest user status
-
-
-        fetchSessionHistory()
+        loadSessionHistory()
     }
 
-
-    private fun fetchSessionHistory() {
-        if (isGuestUser) {
-            loadSessionHistoryFromSharedPreferences()
+    private fun loadSessionHistory() {
+        if (FirebaseAuth.getInstance().currentUser != null) {
+            // Load from Firestore for authenticated users
+            val googleAccount = GoogleSignIn.getLastSignedInAccount(this)
+            googleAccount?.let { account ->
+                val userId = account.id ?: return
+                firestore.collection("users").document(userId)
+                    .collection("sessionHistory")
+                    .orderBy("startTime", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                    .get()
+                    .addOnSuccessListener { result ->
+                        val sessions = result.map { doc ->
+                            val startTime = doc.getTimestamp("startTime") ?: Timestamp.now()
+                            val durationSeconds = doc.getLong("durationSeconds")?.toLong() ?: 0L
+                            val completed = doc.getBoolean("completed") ?: false
+                            Session(startTime, durationSeconds, completed)
+                        }
+                        sessionHistoryRecyclerView.adapter = SessionHistoryAdapter(sessions)
+                    }
+                    .addOnFailureListener { e ->
+                        // Fallback to local data if Firestore fails
+                        loadLocalSessionHistory()
+                    }
+            }
         } else {
-            fetchSessionHistoryFromFirestore()
+            // Load from SharedPreferences for guest users
+            loadLocalSessionHistory()
         }
     }
 
-
-    private fun fetchSessionHistoryFromFirestore() {
-        googleAccount?.let { account ->
-            val userId = account.id ?: return
-            firestore.collection("users").document(userId)
-                .collection("sessionHistory")
-                .orderBy("startTime", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                .get()
-                .addOnSuccessListener { documents ->
-                    val sessions = documents.map { document ->
-                        val startTime = document.getTimestamp("startTime")
-                        val durationSeconds = document.getLong("durationSeconds") ?: 0
-                        val completed = document.getBoolean("completed") ?: false
-                        Session(startTime, durationSeconds, completed)
-                    }.toMutableList()
-                    updateRecyclerView(sessions)
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(
-                        this,
-                        "Failed to load session history from cloud: ${e.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-        } ?: run {
-            Toast.makeText(this, "User not signed in.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun loadSessionHistoryFromSharedPreferences() {
-        val sessionHistoryJson = sharedPreferences.getString(Constants.PREF_GUEST_SESSION_HISTORY, "[]")
+    private fun loadLocalSessionHistory() {
+        val sharedPreferences = getSharedPreferences("MyPrefs", MODE_PRIVATE)
+        val currentHistoryJson = sharedPreferences.getString(SESSION_HISTORY_KEY, "[]")
         val type = object : TypeToken<MutableList<Session>>() {}.type
-        val sessionsList: MutableList<Session> = Gson().fromJson(sessionHistoryJson, type) ?: mutableListOf()
-        updateRecyclerView(sessionsList)
-        Toast.makeText(this, "Session history loaded locally.", Toast.LENGTH_SHORT).show()
+        val sessionHistoryList: List<Session> = Gson().fromJson(currentHistoryJson, type) ?: emptyList()
+        sessionHistoryRecyclerView.adapter = SessionHistoryAdapter(sessionHistoryList)
     }
-
-    private fun saveSessionHistoryToSharedPreferences(session: Session) {
-        val sessionHistoryJson = sharedPreferences.getString(Constants.PREF_GUEST_SESSION_HISTORY, "[]")
-        val type = object : TypeToken<MutableList<Session>>() {}.type
-        val sessionsList: MutableList<Session> = Gson().fromJson(sessionHistoryJson, type) ?: mutableListOf()
-        sessionsList.add(session)
-        val editor = sharedPreferences.edit()
-        editor.putString(Constants.PREF_GUEST_SESSION_HISTORY, Gson().toJson(sessionsList))
-        editor.apply()
-    }
-
-
-    private fun updateRecyclerView(sessions: List<Session>) {
-        sessionHistoryRecyclerView.adapter = SessionHistoryAdapter(sessions)
-    }
-
 
     private fun handleNavigationItemSelected(menuItem: MenuItem): Boolean {
         when (menuItem.itemId) {
             R.id.nav_home -> startActivity(Intent(this, SessionActivity::class.java))
             R.id.nav_progress -> startActivity(Intent(this, ProgressActivity::class.java))
-            R.id.nav_session_history -> startActivity(Intent(this, SessionHistoryActivity::class.java))
+            R.id.nav_session_history -> {} // Already here
             R.id.nav_daily_challenges -> startActivity(Intent(this, DailyChallengesActivity::class.java))
             R.id.nav_reward_gallery -> startActivity(Intent(this, RewardGalleryActivity::class.java))
+            R.id.nav_logout -> {
+                // Sign out from Firebase Auth
+                FirebaseAuth.getInstance().signOut()
+
+                // Redirect the user to the login activity
+                val intent = Intent(this, LoginActivity::class.java) // Replace LoginActivity with your actual login activity class
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK // Clear back stack
+                startActivity(intent)
+                finish() // Optional: Finish the current activity
+            }
         }
         drawerLayout.closeDrawer(navigationView)
         return true
     }
 
+    // Data class for session (already exists in SessionActivity, reused here)
+    data class Session(val startTime: Timestamp?, val durationSeconds: Long, val completed: Boolean)
 
-    class SessionHistoryAdapter(private val sessions: List<Session>) :
+    // RecyclerView Adapter
+    inner class SessionHistoryAdapter(private val sessions: List<Session>) :
         RecyclerView.Adapter<SessionHistoryAdapter.ViewHolder>() {
 
-        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val sessionDateTextView: TextView = view.findViewById(R.id.sessionDateTextView) // Corrected ID to sessionDateTextView
-            val sessionDurationTextView: TextView = view.findViewById(R.id.sessionDurationTextView) // Corrected ID to sessionDurationTextView
+        inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val dateTextView: TextView = view.findViewById(R.id.sessionDate)
+            val timeTextView: TextView = view.findViewById(R.id.sessionTime)
+            val durationTextView: TextView = view.findViewById(R.id.sessionDuration)
+            val statusTextView: TextView = view.findViewById(R.id.sessionStatus)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -167,62 +142,24 @@ class SessionHistoryActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val session = sessions[position]
-            val formattedDate = session.startTime?.toDate()?.let { formatDate(it) } ?: "N/A"
-            val durationMinutes = session.durationSeconds / 60
-            val completionStatus = if (session.completed) "Completed" else "Canceled"
-            holder.sessionDateTextView.text = "Date: $formattedDate" // Set Date to sessionDateTextView
-            holder.sessionDurationTextView.text = "Duration: ${durationMinutes} min, Status: $completionStatus" // Set Duration and Status to sessionDurationTextView
-        }
+            val dateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+            val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
-        private fun formatDate(date: Date): String {
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-            return dateFormat.format(date)
+            // Date (MM/DD/YYYY)
+            holder.dateTextView.text = session.startTime?.toDate()?.let { dateFormat.format(it) } ?: "N/A"
+
+            // Time (HH:MM:SS)
+            holder.timeTextView.text = session.startTime?.toDate()?.let { timeFormat.format(it) } ?: "N/A"
+
+            // Duration (formatted as MM:SS)
+            val minutes = session.durationSeconds / 60
+            val seconds = session.durationSeconds % 60
+            holder.durationTextView.text = String.format("%02d:%02d", minutes, seconds)
+
+            // Status
+            holder.statusTextView.text = if (session.completed) "Completed" else "Canceled"
         }
 
         override fun getItemCount(): Int = sessions.size
-    }
-
-    companion object {
-        // Static method to save session history, can be called from SessionActivity or wherever session ends
-        fun saveSession(context: Context, session: Session) {
-            val sharedPreferences = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
-            val isGuestUser = sharedPreferences.getBoolean(Constants.PREF_IS_GUEST_USER, false)
-            val firestore = FirebaseFirestore.getInstance()
-            val googleAccount = GoogleSignIn.getLastSignedInAccount(context)
-
-            if (isGuestUser) {
-                val sessionHistoryJson = sharedPreferences.getString(Constants.PREF_GUEST_SESSION_HISTORY, "[]")
-                val type = object : TypeToken<MutableList<Session>>() {}.type
-                val sessionsList: MutableList<Session> = Gson().fromJson(sessionHistoryJson, type) ?: mutableListOf()
-
-                // Add the new session to the list
-                sessionsList.add(session)
-
-                // Save the updated list back to SharedPreferences
-                val editor = sharedPreferences.edit()
-                editor.putString(Constants.PREF_GUEST_SESSION_HISTORY, Gson().toJson(sessionsList))
-                editor.apply()
-            } else {
-                // Save session history to Firestore for logged-in users
-                googleAccount?.let { account ->
-                    val userId = account.id ?: return // Return if no user ID
-                    val sessionData = hashMapOf(
-                        "startTime" to session.startTime,
-                        "durationSeconds" to session.durationSeconds,
-                        "completed" to session.completed
-                    )
-
-                    firestore.collection("users").document(userId)
-                        .collection("sessionHistory")
-                        .add(sessionData)
-                        .addOnSuccessListener { documentReference ->
-                            //Log.d(TAG, "DocumentSnapshot added with ID: " + documentReference.id)
-                        }
-                        .addOnFailureListener { e ->
-                            //Log.w(TAG, "Error adding document", e)
-                        }
-                }
-            }
-        }
     }
 }

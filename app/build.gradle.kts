@@ -40,6 +40,7 @@ dependencies {
     implementation ("com.google.android.material:material:1.7.0")
     implementation ("androidx.appcompat:appcompat:1.5.1")
     implementation ("androidx.drawerlayout:drawerlayout:1.2.0")
+    implementation ("androidx.cardview:cardview:1.0.0")
     implementation ("com.github.bumptech.glide:glide:4.15.1")
     implementation(libs.firebase.auth)
     implementation(libs.androidx.credentials)

@@ -1,19 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="8dp">
+    android:layout_margin="8dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="0dp">
 
-    <TextView
-        android:id="@+id/sessionDateTextView"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="16sp" />
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:background="#B2C8B3">
 
-    <TextView
-        android:id="@+id/sessionDurationTextView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        <!-- Date -->
+        <TextView
+            android:id="@+id/sessionDate"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="MM/DD/YYYY"
+            android:textSize="20sp"
+            android:textColor="@android:color/black" />
 
-</LinearLayout>
+        <!-- Time -->
+        <TextView
+            android:id="@+id/sessionTime"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="HH:MM:SS"
+            android:textSize="16sp"
+            android:textAlignment="center"
+            android:textColor="@android:color/black" />
+
+        <!-- Duration -->
+        <TextView
+            android:id="@+id/sessionDuration"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="MM:SS"
+            android:textSize="16sp"
+            android:textAlignment="center"
+            android:textColor="@android:color/black" />
+
+        <!-- Status -->
+        <TextView
+            android:id="@+id/sessionStatus"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Status"
+            android:textSize="20sp"
+            android:textColor="@android:color/black"
+            android:gravity="end" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

@@ -20,4 +20,8 @@
         <item name="android:windowFullscreen">true</item>
     </style>
 
+    <style name="NavigationItemTextAppearance" parent="@style/TextAppearance.MaterialComponents.Body1">
+        <item name="android:textSize">18sp</item> <!-- Adjust the size as needed -->
+    </style>
+
 </resources>
