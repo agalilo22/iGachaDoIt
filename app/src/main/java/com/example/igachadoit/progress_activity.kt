@@ -40,7 +40,6 @@ class ProgressActivity : AppCompatActivity() {
         setContentView(R.layout.progress_activity)
 
         toolbar = findViewById(R.id.toolbar)
-        setSupportActionBar(toolbar)
 
         drawerLayout = findViewById(R.id.drawerLayout)
         navigationView = findViewById(R.id.navigationView)

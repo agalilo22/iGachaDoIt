@@ -59,7 +59,6 @@ class RewardGalleryActivity : AppCompatActivity() {
         rewardCategorySpinner = findViewById(R.id.rewardCategorySpinner)
 
         toolbar = findViewById(R.id.toolbar)
-        setSupportActionBar(toolbar)
 
         drawerLayout = findViewById(R.id.drawerLayout)
         navigationView = findViewById(R.id.navigationView)

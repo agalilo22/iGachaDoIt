@@ -41,7 +41,6 @@ class SessionHistoryActivity : AppCompatActivity() {
         firestore = FirebaseFirestore.getInstance()
 
         toolbar = findViewById(R.id.toolbar)
-        setSupportActionBar(toolbar)
 
         drawerLayout = findViewById(R.id.drawerLayout)
         navigationView = findViewById(R.id.navigationView)

@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
@@ -18,7 +19,7 @@
 
 
         <activity android:name=".LoginActivity" android:exported="true" />
-        <activity android:name=".SessionActivity" android:exported="true" />
+        <activity android:name=".SessionActivity"  android:theme="@style/Theme.IGachaDoIt" android:exported="true" />
         <activity android:name=".DailyChallengesActivity" android:exported="true" />
         <activity android:name=".ProgressActivity" android:exported="true" />
         <activity android:name=".RewardGalleryActivity" android:exported="true" />
@@ -36,8 +37,5 @@
         </activity>
 
     </application>
-
-    <!-- Permissions -->
-    <uses-permission android:name="android.permission.INTERNET" />
 
 </manifest>

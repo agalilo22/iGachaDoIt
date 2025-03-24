@@ -76,7 +76,6 @@ class DailyChallengesActivity : AppCompatActivity() {
         setContentView(R.layout.daily_challenges_activity)
 
         toolbar = findViewById(R.id.toolbar)
-        setSupportActionBar(toolbar)
 
         drawerLayout = findViewById(R.id.drawerLayout)
         navigationView = findViewById(R.id.navigationView)

@@ -125,7 +125,6 @@ class SessionActivity : AppCompatActivity() {
         rewardRecyclerView.adapter = RewardAdapter(prizes)
 
         toolbar = findViewById(R.id.toolbar)
-        setSupportActionBar(toolbar)
 
         timerTextView = findViewById(R.id.timerTextView)
         timerProgressBar = findViewById(R.id.timerProgressBar) // Initialize ProgressBar
