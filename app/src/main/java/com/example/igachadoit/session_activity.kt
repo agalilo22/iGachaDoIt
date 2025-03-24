@@ -500,9 +500,9 @@ class SessionActivity : AppCompatActivity() {
         secondsElapsed = 0
         sessionStartTime = Timestamp.now()
         sessionDurationSeconds = when (selectedDifficulty) {
-            "Easy" -> 60*30 //set to actual duration
-            "Moderate" -> 60*60
-            "Hard" -> 60*120
+            "Easy" -> 5
+            "Moderate" -> 5
+            "Hard" -> 5
             "Superb" -> {
                 val baseHours = 2
                 val additionalHours = 0

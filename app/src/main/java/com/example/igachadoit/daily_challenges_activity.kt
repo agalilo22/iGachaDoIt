@@ -146,16 +146,14 @@ class DailyChallengesActivity : AppCompatActivity() {
         return dateFormat.format(calendar.time)
     }
 
-    //challenges generated
-
     private fun generateRandomChallenges(): List<Challenge> {
         val allChallenges = listOf(
             Challenge("Complete 3 sessions today.", "5 Pulls", imageResId = R.drawable.ic_session),
-            Challenge("Study for 2 hours.", "3 Pulls", imageResId = R.drawable.ic_clock),
-            Challenge("Maintain your streak.", "1 Pull", imageResId = R.drawable.ic_streak),
+//            Challenge("Study for 2 hours.", "3 Pulls", imageResId = R.drawable.ic_clock), // commented out for testing purposes
+//            Challenge("Maintain your streak.", "1 Pull", imageResId = R.drawable.ic_streak), // commented out for testing purposes
             Challenge("Complete a hard session.", "2 Pulls", imageResId = R.drawable.ic_hard),
             Challenge("Complete 5 easy sessions.", "6 Pulls", imageResId = R.drawable.ic_easy),
-            Challenge("Study for 30 minutes.", "1 Pull", imageResId = R.drawable.ic_study)
+//            Challenge("Study for 30 minutes.", "1 Pull", imageResId = R.drawable.ic_study) // commented out for testing purposes
         )
         val shuffledChallenges = allChallenges.shuffled().take(3)
         Log.d(TAG, "Randomly Generated Challenges: ${Gson().toJson(shuffledChallenges)}")
@@ -178,11 +176,11 @@ class DailyChallengesActivity : AppCompatActivity() {
         for (challenge in challenges) {
             when (challenge.description) {
                 "Complete 3 sessions today." -> challenge.completed = sessionsCompleted >= 3
-                "Study for 2 hours." -> challenge.completed = studyTimeMinutes >= 120
-                "Maintain your streak." -> challenge.completed = streakMaintained
+//                "Study for 2 hours." -> challenge.completed = studyTimeMinutes >= 120 // commented out for testing purposes
+//                "Maintain your streak." -> challenge.completed = streakMaintained // commented out for testing purposes
                 "Complete a hard session." -> challenge.completed = hardSessionCompleted
                 "Complete 5 easy sessions." -> challenge.completed = easySessionsCompleted >= 5
-                "Study for 30 minutes." -> challenge.completed = studyTimeMinutes >= 30
+//                "Study for 30 minutes." -> challenge.completed = studyTimeMinutes >= 30 // commented out for testing purposes
             }
             Log.d(TAG, "Challenge: ${challenge.description}, Completed: ${challenge.completed}")
         }
