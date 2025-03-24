@@ -494,6 +494,8 @@ class SessionActivity : AppCompatActivity() {
         }
     }
 
+    //Session Duration settings
+
     private fun startSession() {
         secondsElapsed = 0
         sessionStartTime = Timestamp.now()

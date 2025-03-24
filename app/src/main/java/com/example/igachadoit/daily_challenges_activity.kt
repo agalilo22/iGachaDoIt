@@ -108,6 +108,11 @@ class DailyChallengesActivity : AppCompatActivity() {
         loadPulls()
     }
 
+    override fun onResume() {
+        super.onResume()
+        checkChallengeCompletion() // Refresh challenge status when activity resumes
+    }
+
     private fun getOrGenerateDailyChallenges(): List<Challenge> {
         val currentDate = getCurrentDate()
         val storedDate = sharedPreferences.getString("challengeDate", "")
@@ -144,34 +149,40 @@ class DailyChallengesActivity : AppCompatActivity() {
     private fun generateRandomChallenges(): List<Challenge> {
         val allChallenges = listOf(
             Challenge("Complete 3 sessions today.", "5 Pulls", imageResId = R.drawable.ic_session),
-            Challenge("Study for 2 hours.", "3 Pulls", imageResId = R.drawable.ic_clock),
-            Challenge("Maintain your streak.", "1 Pull", imageResId = R.drawable.ic_streak),
+//            Challenge("Study for 2 hours.", "3 Pulls", imageResId = R.drawable.ic_clock), // commented out for testing purposes
+//            Challenge("Maintain your streak.", "1 Pull", imageResId = R.drawable.ic_streak), // commented out for testing purposes
             Challenge("Complete a hard session.", "2 Pulls", imageResId = R.drawable.ic_hard),
             Challenge("Complete 5 easy sessions.", "6 Pulls", imageResId = R.drawable.ic_easy),
-            Challenge("Study for 30 minutes.", "1 Pull", imageResId = R.drawable.ic_study)
+//            Challenge("Study for 30 minutes.", "1 Pull", imageResId = R.drawable.ic_study) // commented out for testing purposes
         )
         val shuffledChallenges = allChallenges.shuffled().take(3)
         Log.d(TAG, "Randomly Generated Challenges: ${Gson().toJson(shuffledChallenges)}")
         return shuffledChallenges
     }
 
+    // Updated challenge completion logic
     private fun checkChallengeCompletion() {
         val sessionsCompleted = sharedPreferences.getInt("sessionsCompletedToday", 0)
         val studyTimeMinutes = sharedPreferences.getInt("studyTimeMinutes", 0)
         val streakMaintained = sharedPreferences.getBoolean("streakMaintained", false)
         val hardSessionCompleted = sharedPreferences.getBoolean("hardSessionCompleted", false)
         val easySessionsCompleted = sharedPreferences.getInt("easySessionsCompleted", 0)
-        val sessionDifficulty = sharedPreferences.getString("lastSessionDifficulty", "")
+
+        // Log SharedPreferences values for debugging
+        Log.d(TAG, "SharedPrefs - sessionsCompleted: $sessionsCompleted, studyTimeMinutes: $studyTimeMinutes, " +
+                "streakMaintained: $streakMaintained, hardSessionCompleted: $hardSessionCompleted, " +
+                "easySessionsCompleted: $easySessionsCompleted")
 
         for (challenge in challenges) {
             when (challenge.description) {
                 "Complete 3 sessions today." -> challenge.completed = sessionsCompleted >= 3
-                "Study for 2 hours." -> challenge.completed = studyTimeMinutes >= 120
-                "Maintain your streak." -> challenge.completed = streakMaintained
-                "Complete a hard session." -> challenge.completed = hardSessionCompleted && sessionDifficulty == "Hard"
-                "Complete 5 easy sessions." -> challenge.completed = easySessionsCompleted >= 5 && sessionDifficulty == "Easy"
-                "Study for 30 minutes." -> challenge.completed = studyTimeMinutes >= 30
+//                "Study for 2 hours." -> challenge.completed = studyTimeMinutes >= 120 // commented out for testing purposes
+//                "Maintain your streak." -> challenge.completed = streakMaintained // commented out for testing purposes
+                "Complete a hard session." -> challenge.completed = hardSessionCompleted
+                "Complete 5 easy sessions." -> challenge.completed = easySessionsCompleted >= 5
+//                "Study for 30 minutes." -> challenge.completed = studyTimeMinutes >= 30 // commented out for testing purposes
             }
+            Log.d(TAG, "Challenge: ${challenge.description}, Completed: ${challenge.completed}")
         }
         adapter.notifyDataSetChanged()
     }
@@ -232,14 +243,11 @@ class DailyChallengesActivity : AppCompatActivity() {
             R.id.nav_daily_challenges -> {} // Already here
             R.id.nav_reward_gallery -> startActivity(Intent(this, RewardGalleryActivity::class.java))
             R.id.nav_logout -> {
-                // Sign out from Firebase Auth
                 FirebaseAuth.getInstance().signOut()
-
-                // Redirect the user to the login activity
-                val intent = Intent(this, LoginActivity::class.java) // Replace LoginActivity with your actual login activity class
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK // Clear back stack
+                val intent = Intent(this, LoginActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 startActivity(intent)
-                finish() // Optional: Finish the current activity
+                finish()
             }
         }
         drawerLayout.closeDrawer(navigationView)
@@ -353,24 +361,20 @@ class DailyChallengesAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val challenge = challenges[position]
 
-        // Log the resource ID here to confirm it's not 0
         Log.d("DailyChallengesAdapter", "Attempting to load image for ${challenge.description}. Resource ID: ${challenge.imageResId}")
         holder.challengeImage.setImageResource(challenge.imageResId)
 
-        // Check if the image is actually loaded (drawable is not null) - this check is good
         if (holder.challengeImage.drawable == null) {
             Log.w("DailyChallengesAdapter", "Image not rendered for ${challenge.description}, using fallback")
-            holder.challengeImage.setImageResource(android.R.drawable.ic_menu_help) // Fallback
+            holder.challengeImage.setImageResource(android.R.drawable.ic_menu_help)
             Toast.makeText(holder.itemView.context, "Image missing for ${challenge.description}", Toast.LENGTH_SHORT).show()
         } else {
             Log.d("DailyChallengesAdapter", "Image successfully loaded for ${challenge.description}")
         }
 
-        // Set description and reward
         holder.challengeDescriptionTextView.text = challenge.description
         holder.challengeRewardTextView.text = "Reward: ${challenge.reward}"
 
-        // Handle completion and claim status
         if (challenge.completed && !challenge.claimed) {
             holder.claimButton.visibility = View.VISIBLE
             holder.challengeDescriptionTextView.paintFlags = holder.challengeDescriptionTextView.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
