@@ -109,26 +109,13 @@ class LoginActivity : AppCompatActivity() {
     private fun showGuestWarningDialog() {
         AlertDialog.Builder(this)
             .setTitle("Continue as Guest")
-            .setMessage("Your progress will be saved locally on this device. If you uninstall the app or clear data, your progress will be lost. Do you want to proceed?") // Updated message
+            .setMessage("Your progress will be saved locally on this device. If you uninstall the app or clear data, your progress will be lost. Do you want to proceed?")
             .setPositiveButton("Continue") { _, _ ->
-                showDifficultyInfoDialog()
-            }
-            .setNegativeButton("Cancel", null)
-            .create()
-            .show()
-    }
-
-    private fun showDifficultyInfoDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("Difficulty Information")
-            .setMessage("Please note, difficulty durations are set to 5 seconds for testing purposes.")
-            .setPositiveButton("OK") { dialog, _ ->
                 val intent = Intent(this, SessionActivity::class.java)
                 startActivity(intent)
                 Toast.makeText(this, "Logged in as Guest", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
             }
-            .setCancelable(false)
+            .setNegativeButton("Cancel", null)
             .create()
             .show()
     }
